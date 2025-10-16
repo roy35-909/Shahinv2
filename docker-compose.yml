@@ -1,0 +1,62 @@
+services:
+  # web:
+  #   build: .
+  #   container_name: django_app
+  #   command: python manage.py runserver 0.0.0.0:8000
+  #   working_dir: /app
+  #   volumes:
+  #     - .:/app
+  #     # if you really want the sqlite file in a subdir, keep this.
+  #     # otherwise you can remove this line and use /app/db.sqlite3
+  #     - ./db:/app/db
+  #   ports:
+  #     - "8080:8000"
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - django_network
+
+  # celery:
+  #   build: .
+  #   container_name: celery_worker
+  #   command: celery -A shahin.celery:app worker -l info
+  #   working_dir: /app
+  #   environment:
+  #     PYTHONPATH: /app
+  #     DJANGO_SETTINGS_MODULE: shahin.settings
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - django_network
+
+  # celery-beat:
+  #   build: .
+  #   container_name: celery_beat
+  #   command: celery -A shahin.celery:app beat -l info
+  #   working_dir: /app
+  #   environment:
+  #     PYTHONPATH: /app
+  #     DJANGO_SETTINGS_MODULE: shahin.settings
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - django_network
+  #   ports:
+      
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    networks:
+      - django_network
+
+    ports:
+      - "6379:6379"
+
+networks:
+  django_network:
+    driver: bridge
