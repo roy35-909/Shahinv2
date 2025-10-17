@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db.models import QuerySet
 from djoser.serializers import UserCreateSerializer
-from .models import User
+from .models import User,Badge,UserBadge
 class UserCreateSerializers(UserCreateSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
@@ -52,3 +52,15 @@ class UserTargetSerializer(serializers.ModelSerializer):
         instance.target = validated_data.get('target', instance.target)
         instance.save()
         return instance
+    
+
+class BadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = '__all__'
+
+class UserBadgeSerializer(serializers.ModelSerializer):
+    badge = BadgeSerializer()
+    class Meta:
+        model = UserBadge
+        fields = '__all__'

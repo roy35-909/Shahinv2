@@ -14,9 +14,11 @@ from shahin.base import *
 from shahin.response import *
 from .serializers import *
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import UserBadge,Badge
 # from google.oauth2 import id_token
 # from google.auth.transport import requests as google_requests
-
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import LoginHistory                                
 def send_otp_email(user_email, otp_code):
     subject = "Reset Your Password - MP"
     from_email = settings.EMAIL_HOST_USER
@@ -71,6 +73,9 @@ class UserRegisterAPIView(NewAPIView):
         refresh = RefreshToken.for_user(user)
         user.set_password(password)  
         user.save()
+        badges = Badge.objects.all()
+        for badge in badges:
+            UserBadge.objects.get_or_create(user=user, badge=badge)
         return Response({
             "message": "User created successfully",
             "user": {
@@ -250,3 +255,37 @@ class AddTargetAPIView(NewAPIView):
             return Response({"message": "Targets updated successfully", "targets": serializer.data['target']},
                             status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        # Call the parent class's post method to get the token response
+        response = super().post(request, *args, **kwargs)
+
+        if response.status_code == status.HTTP_200_OK:
+            # Extract the user from the JWT token payload
+            access_token = response.data.get('access')
+            if access_token:
+                # Decode the access token and retrieve the user ID from the payload
+                from rest_framework_simplejwt.tokens import AccessToken
+                try:
+                    token = AccessToken(access_token)
+                    user_id = token['user_id']  # The 'user_id' key corresponds to the authenticated user
+                    user = self.get_user(user_id)  # Get the user object
+                    if user:
+                        # Log the successful login
+                        LoginHistory.objects.create(user=user)
+                except Exception as e:
+                    print(f"Error retrieving user from token: {e}")
+        
+        return response
+
+    def get_user(self, user_id):
+        """Helper method to get a user object by ID."""
+        try:
+            from django.contrib.auth import get_user_model
+            return get_user_model().objects.get(id=user_id)
+        except get_user_model().DoesNotExist:
+            return None
+        
+

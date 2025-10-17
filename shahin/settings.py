@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'authentication',
     'quote',
+    'users',
+    'friends',
 ]
 
 MIDDLEWARE = [
@@ -193,6 +195,23 @@ SWAGGER_SETTINGS = {
     },
 
 }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
 DJOSER = {
     'SEND_ACTIVATION_EMAIL': False,
     'SERIALIZERS': {
@@ -212,6 +231,7 @@ DJOSER = {
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Using Redis as the broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

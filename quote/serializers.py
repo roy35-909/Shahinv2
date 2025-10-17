@@ -1,6 +1,6 @@
 
 from rest_framework import serializers
-from .models import UserSchedule
+from .models import UserSchedule, UserQuote, Quote
 
 class UserScheduleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,3 +19,13 @@ class UserScheduleSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Interval must be a positive integer.")
         return value
+    
+class QuoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quote
+        fields = '__all__'
+class UserHistorySerializer(serializers.ModelSerializer):
+    quote = QuoteSerializer()
+    class Meta:
+        model = UserQuote
+        fields = '__all__'
