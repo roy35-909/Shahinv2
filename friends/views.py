@@ -6,6 +6,11 @@ from rest_framework.response import Response
 from shahin.base import NewAPIView
 from django.db.models import Q
 from rest_framework.views import APIView
+from django.utils import timezone
+from django.db.models import Count, Q
+from datetime import timedelta
+from quote.models import UserQuote
+from authentication.models import UserBadge
 User = get_user_model()
 
 class SendFriendRequestAPIView(NewAPIView):
@@ -138,3 +143,148 @@ class SearchUserAPIView(NewAPIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({'detail': 'No users found matching the search criteria.'}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+
+class LeaderboardAPIView(NewAPIView):
+    """
+    Leaderboard API with badges
+    Shows weekly, monthly, and all-time top users
+    based on their total activity from UserQuote.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = LeaderboardUserSerializer
+
+    def get(self, request):
+        now = timezone.now()
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
+
+        def build_leaderboard(time_filter=None):
+            queryset = UserQuote.objects.all()
+            if time_filter:
+                queryset = queryset.filter(sent_at__gte=time_filter)
+
+            leaderboard = (
+                queryset
+                .values(
+                    "user__id",
+                    "user__first_name",
+                    "user__profile_photo",
+                    "user__subscription_type"
+                )
+                .annotate(total_points=Count("id"))
+                .order_by("-total_points")[:10]
+            )
+
+            results = []
+            for u in leaderboard:
+                user_id = u["user__id"]
+
+                # Fetch all badges for this user (optional: only completed ones)
+                user_badge = UserBadge.objects.filter(user_id=user_id, is_completed=True).order_by('-id').first()
+
+                # badges_data = [
+                #     {
+                #         "badge_id": b.badge.id,
+                #         "badge_name": b.badge.name,
+                #         "is_completed": b.is_completed,
+                #     }
+                #     for b in user_badges
+                # ]
+
+                results.append({
+                    "user_id": user_id,
+                    "first_name": u["user__first_name"],
+                    "profile_photo": u["user__profile_photo"],
+                    "subscription_type": u["user__subscription_type"],
+                    "total_points": u["total_points"],
+                    "badge": {
+                        "badge_id": user_badge.badge.id if user_badge else None,
+                        "badge_name": user_badge.badge.name if user_badge else None,
+                        "is_completed": user_badge.is_completed if user_badge else False,
+                    },
+                })
+
+            return results
+
+        data = {
+            "weekly": build_leaderboard(week_start),
+            "monthly": build_leaderboard(month_start),
+            "all_time": build_leaderboard(),
+        }
+
+        return Response(data)
+
+
+class FriendLeaderboardAPIView(APIView):
+    """
+    Leaderboard among the authenticated user's friends (including self).
+    Always shows the current user's activity even if others have none.
+    """
+
+    def get(self, request):
+        user = request.user
+        now = timezone.now()
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
+
+        # --- Step 1: Find accepted friends ---
+        friend_ids = Friendship.objects.filter(
+            Q(user1=user, status=Friendship.ACCEPTED)
+            | Q(user2=user, status=Friendship.ACCEPTED)
+        ).values_list("user1", "user2")
+
+        friend_ids = {uid for pair in friend_ids for uid in pair if uid != user.id}
+        friend_ids.add(user.id)  # Always include self
+
+        # --- Step 2: Helper to build leaderboard ---
+        def build_leaderboard(time_filter=None):
+            queryset = UserQuote.objects.filter(user_id__in=friend_ids)
+            if time_filter:
+                queryset = queryset.filter(sent_at__gte=time_filter)
+
+            leaderboard = (
+                queryset.values(
+                    "user__id",
+                    "user__first_name",
+                    "user__profile_photo",
+                    "user__subscription_type",
+                )
+                .annotate(total_points=Count("id"))
+            )
+
+            # --- Step 3: Ensure all friends (and self) are present, even with 0 points ---
+            user_data_map = {u["user__id"]: u for u in leaderboard}
+            all_users = User.objects.filter(id__in=friend_ids)
+
+            results = []
+            for u in all_users:
+                user_badge = UserBadge.objects.filter(user=u, is_completed=True).order_by('-id').first()
+                total_points = user_data_map.get(u.id, {}).get("total_points", 0)
+
+                results.append({
+                    "user_id": u.id,
+                    "first_name": u.first_name,
+                    "profile_photo": u.profile_photo.url if getattr(u, 'profile_photo', None) else None,
+                    "subscription_type": getattr(u, 'subscription_type', 'free'),
+                    "total_points": total_points,
+                    "badge": {
+                        "badge_id": user_badge.badge.id if user_badge else None,
+                        "badge_name": user_badge.badge.name if user_badge else None,
+                        "is_completed": user_badge.is_completed if user_badge else False,
+                    }
+                })
+
+            # Sort by total points descending
+            results = sorted(results, key=lambda x: x["total_points"], reverse=True)
+            return results
+
+        data = {
+            "weekly": build_leaderboard(week_start),
+            "monthly": build_leaderboard(month_start),
+            "all_time": build_leaderboard(),
+        }
+
+        return Response(data)

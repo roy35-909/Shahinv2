@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 import environ
+from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,7 +36,9 @@ DEBUG = True
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 ALLOWED_HOSTS = ['*']
-
+CSRF_TRUSTED_ORIGINS = [
+    'https://satirical-marin-quittable.ngrok-free.dev',
+]
 
 # Application definition
 
@@ -52,6 +55,9 @@ INSTALLED_APPS = [
     'quote',
     'users',
     'friends',
+    'ai',
+    'payment',
+    'dashboard',
 ]
 
 MIDDLEWARE = [
@@ -232,6 +238,35 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Using Redis as the broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+CELERY_BEAT_SCHEDULE = {
+    'generate_quote_by_ai_fitness': {
+        'task': 'ai.tasks.generate_quote',
+        'schedule': crontab(hour=0, minute=0),  
+        'args': ('Fitness'),  
+    },
+        'generate_quote_by_ai_career': {
+        'task': 'ai.tasks.generate_quote',  
+        'schedule': crontab(hour=0, minute=6),  
+        'args': ('Career'),  
+    },
+        'generate_quote_by_ai_business': {
+        'task': 'ai.tasks.generate_quote',  
+        'schedule': crontab(hour=0, minute=13),  
+        'args': ('Business'),  
+    },
+        'generate_quote_by_ai_discipline': {
+        'task': 'ai.tasks.generate_quote',  
+        'schedule': crontab(hour=0, minute=20),  
+        'args': ('Discipline'),  
+    },
+        'generate_quote_by_ai_mindset': {
+        'task': 'ai.tasks.generate_quote',  
+        'schedule': crontab(hour=0, minute=26),  
+        'args': ('Mindset'), 
+    },
+}
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -253,3 +288,10 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["https://www.googleapis.com/auth/userinfo.email","https://www.googleapis.com/auth/userinfo.profile","openid"]
 SOCIAL_AUTH_GOOGLE_OAUTH2_EXTRA_DATA = ['first_name','last_name']
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+OPENAI_API_KEY=env('OPENAI_API_KEY')
+
+
+# Stripe Configuration
+
+STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET')

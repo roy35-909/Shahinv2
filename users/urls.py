@@ -8,6 +8,7 @@ from .views import (
     ChangePasswordAPIView,
     SupportCreateAPIView,
     GetUserPoints,
+    PrintQuote
 )
 
 urlpatterns = [
@@ -18,5 +19,6 @@ urlpatterns = [
     path("profile/get", GetUserProfileAPIView.as_view(), name="Get User Profile"),
     path("auth/change_password",ChangePasswordAPIView.as_view(), name="Change Password View"),
     path("user/support/",SupportCreateAPIView.as_view(),name="User Support Create API View"),
-    path("user/total_points/",GetUserPoints.as_view(), name="User Total Points")
+    path("user/total_points/",GetUserPoints.as_view(), name="User Total Points"),
+    path("user/test/",PrintQuote.as_view(), name="User Total Points")
 ]

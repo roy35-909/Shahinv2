@@ -30,3 +30,18 @@ class UserSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'username', 'first_name', 'last_name', 'profile_photo']
+
+
+class LeaderboardUserSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    first_name = serializers.CharField()
+    profile_photo = serializers.ImageField()
+    subscription_type = serializers.CharField()
+    total_points = serializers.IntegerField()
+
+
+
+class UserBadgeSerializer(serializers.Serializer):
+    badge_id = serializers.IntegerField(source="badge.id")
+    badge_name = serializers.CharField(source="badge.name")
+    is_completed = serializers.BooleanField()

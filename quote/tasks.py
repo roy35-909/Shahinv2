@@ -37,18 +37,42 @@ from random import choice
 
 import logging
 from celery import shared_task
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.db.models import Subquery
+
+User = get_user_model()
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 @shared_task
 def send_motivation_quote(user_id):
-    try:
-        user = User.objects.get(id=user_id)
-        # Your logic to send motivational quote to the user
-        logger.info(f"Sending motivational quote to {user.email}")
-        print(f"Sending motivational quote to {user.email}")
-    except User.DoesNotExist:
-        logger.error(f"User with id {user_id} does not exist.")
-        print(f"User with id {user_id} does not exist.")
+    """
+    Sends a quote to the user.
+    """
+    print("Hello world , i am sending the quotes")
+    print(user_id)
+    user = User.objects.get(id=user_id)
+
+    quote = get_relevant_quote(user)
+    
+    if quote:
+
+        print(f"Sending Push Notification to: {user} , {quote}")
+
+        UserQuote.objects.create(user=user, quote=quote)
+
+def get_relevant_quote(user):
+    """
+    Get a random relevant quote based on the user's interests.
+    """
+    user_targets = user.target
+    user_quotes = UserQuote.objects.filter(user=user).values('quote_id')
+    available_quotes = Quote.objects.exclude(id__in=Subquery(user_quotes))
+    available_quotes = available_quotes.filter(category__in=user_targets)
+
+    if available_quotes.exists():
+        selected_quote = choice(available_quotes)
+        if not UserQuote.objects.filter(user=user, quote=selected_quote).exists():
+            return selected_quote       
+    return None

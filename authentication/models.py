@@ -46,6 +46,12 @@ class User(AbstractUser):
         ('discipline', 'Discipline'),
         ('mindset', 'Mindset'),
     ]
+    SUBSCRIPTION_CHOICES = [
+        ('free', 'Free'),
+        ('monthly', 'Premium Monthly'),
+        ('yearly', 'Premium Yearly'),
+        ('lifetime', 'Lifetime Premium'),
+    ]
     email = models.EmailField(verbose_name='Email', max_length=255, unique=True)
     password = models.CharField(max_length=100)
     phone = models.CharField(max_length=20,null=True)
@@ -63,6 +69,14 @@ class User(AbstractUser):
         symmetrical=False,     # False because friendship is typically not symmetrical
         related_name='friend_set',  # This allows you to access the friends from the reverse side
         blank=True              # Allow this relationship to be empty
+    )
+    subscription_type = models.CharField(
+        max_length=20, choices=SUBSCRIPTION_CHOICES, default='free'
+    )
+    subscription_start = models.DateTimeField(null=True, blank=True)
+    subscription_end = models.DateTimeField(null=True, blank=True)
+    stripe_customer_id = models.CharField(
+        max_length=255, null=True, blank=True
     )
     points = models.IntegerField(default=0)
     city = models.CharField(max_length=255, null=True, blank=True)

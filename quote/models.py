@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
 User = get_user_model()
 
 
@@ -29,32 +30,34 @@ class UserSchedule(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     start_time = models.TimeField(null=True,blank=True)  # e.g., 8 PM
     end_time = models.TimeField(null=True, blank=True)    # e.g., 12 AM
-    interval_minutes = models.IntegerField(default=60)  # Time interval for receiving quotes in minutes
-    
+    interval_minutes = models.IntegerField(default=1)  # Time interval for receiving quotes in minutes
+    all_schedule = models.ManyToManyField(PeriodicTask)
+    all_cornjobs = models.ManyToManyField(CrontabSchedule)
+
     def get_scheduled_times(self):
         """
-        Generate and return a list of times when notifications should be sent
-        based on the user's time window and interval.
+        Divide the time range between start_time and end_time equally
+        into 'number_of_slots' parts and return the scheduled times.
         """
         times = []
-        
-        # Get current date and ensure time zone aware
+
+        if not self.start_time or not self.end_time or self.interval_minutes <= 0:
+            return times
+
         current_date = timezone.localtime(timezone.now()).date()
-        
-        # Convert the start_time and end_time to datetime objects on the current date
         start_datetime = timezone.make_aware(datetime.combine(current_date, self.start_time))
         end_datetime = timezone.make_aware(datetime.combine(current_date, self.end_time))
 
-        # Handle the case where end_time is actually on the next day (e.g., 10 PM to 2 AM)
-        if end_datetime < start_datetime:
-            # If end_time is earlier than start_time, we add a day to the end_time
+        # Handle overnight range (e.g., 10 PM to 2 AM)
+        if end_datetime <= start_datetime:
             end_datetime += timedelta(days=1)
 
-        # Generate scheduled times based on the interval
-        current_time = start_datetime
-        while current_time < end_datetime:
-            times.append(current_time)
-            current_time += timedelta(minutes=self.interval_minutes)
+        total_duration = end_datetime - start_datetime
+        interval = total_duration / self.interval_minutes
+
+        # Generate equally divided times (excluding the end time)
+        for i in range(self.interval_minutes):
+            times.append(start_datetime + interval * i)
 
         return times
     

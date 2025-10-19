@@ -7,7 +7,7 @@ from .serializers import *
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from shahin.response import *
 from django.core.exceptions import ObjectDoesNotExist
-
+from ai.tasks import generate_quote
 from authentication.models import UserBadge
 
 class UserBadgeListAPIView(NewAPIView):
@@ -172,5 +172,12 @@ class GetUserPoints(APIView):
         user = request.user
         
         return Response({'points':user.points}, status=status.HTTP_200_OK)
+    
+class PrintQuote(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        result = generate_quote.delay('Fitness')
+        return Response({'msg':'success'}, status=status.HTTP_200_OK)
     
     
