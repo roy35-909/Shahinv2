@@ -20,7 +20,7 @@ class UserQuote(models.Model):
     is_liked = models.BooleanField(default=False)
     is_saved = models.BooleanField(default=False)
     is_share = models.BooleanField(default=False)
-    
+    is_viewed = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('user', 'quote')

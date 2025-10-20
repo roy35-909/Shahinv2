@@ -9,7 +9,7 @@ source ../myenv/bin/activate
 # Run the Django shell command to create badges
 python manage.py shell << EOF
 from authentication.models import Badge
-
+from payment.models import SubscriptionPlan
 # List of badges to be created
 badges = [
     {'name': 'Lone Wolf', 'description': 'Complete 5 morning motivation sessions', 'points_required': 100},
@@ -28,6 +28,11 @@ badges = [
 for badge_data in badges:
     Badge.objects.get_or_create(**badge_data)
     print(f"Created badge: {badge_data['name']}")
+
+SubscriptionPlan.objects.get_or_create(name='monthly',price=4.99)
+SubscriptionPlan.objects.get_or_create(name='yearly',price=39.99)
+SubscriptionPlan.objects.get_or_create(name='lifetime',price=89)
+SubscriptionPlan.objects.get_or_create(name='free',price=0)
 
 EOF
 

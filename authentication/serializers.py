@@ -64,3 +64,11 @@ class UserBadgeSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserBadge
         fields = '__all__'
+
+
+class BadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = '__all__'
+
+

@@ -3,6 +3,11 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 # Create your models here.
+class SubscriptionPlan(models.Model):
+    name = models.CharField(max_length=255)
+    price = models.FloatField()
+
+
 class Payment(models.Model):
     PAYMENT_STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -20,8 +25,6 @@ class Payment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     payment_method = models.CharField(max_length=50, default='stripe')  # in case you support other methods later
-    stripe_customer_id = models.CharField(
-        max_length=255, null=True, blank=True
-    )
+
     def __str__(self):
         return f"{self.user.email} - {self.amount} {self.currency} - {self.status}"

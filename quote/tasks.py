@@ -60,14 +60,14 @@ def send_motivation_quote(user_id):
 
         print(f"Sending Push Notification to: {user} , {quote}")
 
-        UserQuote.objects.create(user=user, quote=quote)
+        UserQuote.objects.get_or_create(user=user, quote=quote)
 
 def get_relevant_quote(user):
     """
     Get a random relevant quote based on the user's interests.
     """
     user_targets = user.target
-    user_quotes = UserQuote.objects.filter(user=user).values('quote_id')
+    user_quotes = UserQuote.objects.filter(user=user,is_viewed=True).values('quote_id')
     available_quotes = Quote.objects.exclude(id__in=Subquery(user_quotes))
     available_quotes = available_quotes.filter(category__in=user_targets)
 

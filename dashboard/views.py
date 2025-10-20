@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from shahin.base import NewAPIView
-
+from django.core.paginator import Paginator, EmptyPage
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from django.db.models.functions import ExtractMonth
@@ -15,6 +15,10 @@ from django.db.models import Sum,Q,Count
 from rest_framework.permissions import IsAdminUser,IsAuthenticated
 from quote.models import UserQuote
 from django.utils.timezone import timedelta
+from django.shortcuts import get_object_or_404
+from authentication.models import Badge
+from authentication.serializers import BadgeSerializer
+from django.db.models import F
 User = get_user_model()
 # Create your views here.
 class AdminTokenObtainPairView(TokenObtainPairView):
@@ -227,6 +231,8 @@ class SubscriptionDistributionAPIView(APIView):
         ]
         }
     """
+    permission_classes = [IsAdminUser]
+
 
     def get(self, request):
         # Count users by subscription type
@@ -255,3 +261,309 @@ class SubscriptionDistributionAPIView(APIView):
             "total_users": total_users,
             "distribution": distribution
         })
+    
+
+class UserListView(APIView):
+    '''
+    <h1>Example Request for /dashboard/users/?page=1&page_size=5</h1>
+    '''
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        users = User.objects.all().order_by('-created_at')
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+
+        paginator = Paginator(users, page_size)
+
+        try:
+            paginated_users = paginator.page(page)
+        except EmptyPage:
+            return Response({
+                "detail": "No more users."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserListSerializer(paginated_users, many=True, context={'request': request})
+
+        return Response({
+            "count": paginator.count,
+            "total_pages": paginator.num_pages,
+            "current_page": page,
+            "results": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+
+class DeactivateAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        user.is_active = False
+        user.save()
+        return Response({"message": "Account deactivated successfully."}, status=status.HTTP_200_OK)
+
+
+
+class DeleteAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        user.delete()
+        return Response({"message": "Account deleted successfully."}, status=status.HTTP_200_OK)
+    
+
+class NotificationListCreateView(NewAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = NotificationSerializer
+    def get(self, request):
+        notifications = Notifications.objects.all().order_by('-time')
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = NotificationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NotificationDetailView(NewAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = NotificationSerializer
+    def get_object(self, pk):
+        return get_object_or_404(Notifications, pk=pk)
+
+    def get(self, request, pk):
+        notification = self.get_object(pk)
+        serializer = NotificationSerializer(notification)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        notification = self.get_object(pk)
+        serializer = NotificationSerializer(notification, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        notification = self.get_object(pk)
+        notification.delete()
+        return Response({'detail': 'Deleted successfully'}, status=status.HTTP_200_OK)
+    
+
+class BadgeListCreateView(NewAPIView):
+    permission_classes = [IsAdminUser]
+    serializer_class = BadgeSerializer
+    def get(self, request):
+        badges = Badge.objects.all()
+        serializer = BadgeSerializer(badges, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = BadgeSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class BadgeDetailView(NewAPIView):
+    permission_classes = [IsAdminUser]
+    serializer_class = BadgeSerializer
+    def get_object(self, pk):
+        return get_object_or_404(Badge, pk=pk)
+
+    def get(self, request, pk):
+        badge = self.get_object(pk)
+        serializer = BadgeSerializer(badge)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        badge = self.get_object(pk)
+        serializer = BadgeSerializer(badge, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        badge = self.get_object(pk)
+        badge.delete()
+        return Response({'detail': 'Badge deleted successfully'}, status=status.HTTP_200_OK)
+    
+
+class LeaderboardView(APIView):
+
+    '''
+    <h1>GET /?page=2&page_size=10</h1>
+    '''
+
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = LeaderboardSerializer
+
+    def get(self, request):
+        # Get users, ordered by points
+        users = User.objects.annotate(total_points=F('points')).order_by('-total_points')
+
+        # Pagination setup
+        page_size = request.query_params.get('page_size', 10)  # Default to 10 if not provided
+        page_number = request.query_params.get('page', 1)  # Default to page 1 if not provided
+
+        paginator = Paginator(users, page_size)  # Paginate users
+        page = paginator.get_page(page_number)  # Get the page
+
+        leaderboard_data = []
+        for idx, user in enumerate(page.object_list):
+            # Add rank (calculate based on pagination)
+            rank = (page.number - 1) * paginator.per_page + idx + 1
+            # Serialize the user and add the rank to the data
+            serializer = LeaderboardSerializer(user)
+            leaderboard_data.append({'rank': rank, **serializer.data})
+
+        # Return paginated response
+        return Response({
+            'count': paginator.count,
+            'next': page.has_next(),
+            'previous': page.has_previous(),
+            'results': leaderboard_data
+        }, status=200)
+
+class DeleteUserFromLeaderboard(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        user.delete()
+
+        return Response({"detail": "User deleted successfully from leaderboard"}, status=status.HTTP_200_OK)
+    
+class PaymentListView(NewAPIView):
+    
+    '''
+    <h1>GET /?page=2&page_size=10</h1>
+    '''
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = PaymentSerializer
+    def get(self, request):
+
+        payments = Payment.objects.all()
+
+
+        page_size = request.query_params.get('page_size', 10)  
+        page_number = request.query_params.get('page', 1)  
+
+
+        paginator = Paginator(payments, page_size)
+        page = paginator.get_page(page_number)
+
+
+        serializer = PaymentSerializer(page.object_list, many=True)
+
+
+        return Response({
+            'count': paginator.count,
+            'next': page.has_next(),
+            'previous': page.has_previous(),
+            'results': serializer.data
+        }, status=200)
+    
+class PaymentDeleteView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, pk):
+        payment = get_object_or_404(Payment, pk=pk)
+        payment.delete()
+        return Response({"detail": "Payment deleted successfully."}, status=status.HTTP_200_OK)
+    
+
+class SubscriptionPlanUpdateView(APIView):
+    '''
+    <h2> Names Are </h2> \n
+    monthly \n
+    yearly \n
+    lifetime \n
+
+
+    '''
+    permission_classes = [IsAdminUser]
+    serializer_class = SubscriptionPlanSerializer
+    def put(self, request, name):
+
+        try:
+            subscription_plan = SubscriptionPlan.objects.get(name=name)
+        except SubscriptionPlan.DoesNotExist:
+            return Response({"detail": "SubscriptionPlan not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = SubscriptionPlanSerializer(subscription_plan, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()  
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class PrivacyPolicyAPIView(NewAPIView):
+
+    permission_classes = [IsAdminUser]
+    serializer_class = PrivacyPolicySerializer
+    def post(self,request):
+
+        data = request.data 
+        if 'text' not in data:
+            return Response({'error':'missing field text'}, status=status.HTTP_404_NOT_FOUND)
+        
+        privacy_policy , created = PrivacyPolicy.objects.get_or_create(id=1,text=data['text'])
+        if not created:
+            privacy_policy.text = data['text']
+            privacy_policy.save()
+
+        ser = PrivacyPolicySerializer(privacy_policy)
+
+        return Response(ser.data, status=status.HTTP_200_OK)
+    
+class TrimsAndConditionAPIView(NewAPIView):
+
+    permission_classes = [IsAdminUser]
+    serializer_class = TremsAndConditionSerializer
+    def post(self,request):
+
+        data = request.data 
+        if 'text' not in data:
+            return Response({'error':'missing field text'}, status=status.HTTP_404_NOT_FOUND)
+        
+        terms_condition , created = TremsAndCondition.objects.get_or_create(id=1,text=data['text'])
+        if not created:
+            terms_condition.text = data['text']
+            terms_condition.save()
+
+        ser = TremsAndConditionSerializer(terms_condition)
+
+        return Response(ser.data, status=status.HTTP_200_OK)
+    
+
+class PrivacyPolicyRetrieveAPIView(APIView):
+
+    def get(self, request):
+        try:
+            privacy_policy = PrivacyPolicy.objects.get(id=1)
+        except PrivacyPolicy.DoesNotExist:
+            return Response({"detail": "PrivacyPolicy not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PrivacyPolicySerializer(privacy_policy)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class TermsAndConditionRetrieveAPIView(APIView):
+
+    def get(self, request):
+
+        try:
+            terms_and_condition = TremsAndCondition.objects.get(id=1)
+        except TremsAndCondition.DoesNotExist:
+            return Response({"detail": "TermsAndCondition not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+        serializer = TremsAndConditionSerializer(terms_and_condition)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1,29 +1,45 @@
 from django.shortcuts import render
 
-# Create your views here.
+
 import stripe
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import User, Payment
+from .models import User, SubscriptionPlan,Payment
 from .serializers import SubscriptionSerializer, PaymentSerializer
 from datetime import timedelta
 from django.utils import timezone
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-# Price mapping
-SUBSCRIPTION_PRICES = {
-    'monthly': 4.99,
-    'yearly': 39.99,
-    'lifetime': 89.00
-}
+
+
 
 class SubscribeUserAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         serializer = SubscriptionSerializer(data=request.data)
+        try:
+            monthly_price = SubscriptionPlan.objects.get(name='monthly')
+        except:
+            monthly_price = 4.99
+
+        try:
+            yearly_price = SubscriptionPlan.objects.get(name='yearly')
+        except:
+            yearly_price = 39.99
+
+        try:
+            lifetime_price = SubscriptionPlan.objects.get(name='lifetime')
+        except:
+            lifetime_price = 89.00
+
+        SUBSCRIPTION_PRICES = {
+            'monthly': monthly_price,
+            'yearly': yearly_price,
+            'lifetime': lifetime_price
+        }
         if serializer.is_valid():
             subscription_type = serializer.validated_data['subscription_type']
             

@@ -38,6 +38,7 @@ CORS_ALLOW_CREDENTIALS = True
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'https://satirical-marin-quittable.ngrok-free.dev',
+    'http://localhost:8888'
 ]
 
 # Application definition
@@ -243,28 +244,28 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
     'generate_quote_by_ai_fitness': {
         'task': 'ai.tasks.generate_quote',
-        'schedule': crontab(hour=0, minute=0),  
-        'args': ('Fitness'),  
+        'schedule': crontab(hour=0, minute=7),  
+        'args': ('Fitness',),  
     },
         'generate_quote_by_ai_career': {
         'task': 'ai.tasks.generate_quote',  
-        'schedule': crontab(hour=0, minute=6),  
-        'args': ('Career'),  
+        'schedule': crontab(hour=0, minute=10),  
+        'args': ('Career',),  
     },
         'generate_quote_by_ai_business': {
         'task': 'ai.tasks.generate_quote',  
-        'schedule': crontab(hour=0, minute=13),  
-        'args': ('Business'),  
+        'schedule': crontab(hour=0, minute=12),  
+        'args': ('Business',),  
     },
         'generate_quote_by_ai_discipline': {
         'task': 'ai.tasks.generate_quote',  
-        'schedule': crontab(hour=0, minute=20),  
-        'args': ('Discipline'),  
+        'schedule': crontab(hour=0, minute=15),  
+        'args': ('Discipline',),  
     },
         'generate_quote_by_ai_mindset': {
         'task': 'ai.tasks.generate_quote',  
-        'schedule': crontab(hour=0, minute=26),  
-        'args': ('Mindset'), 
+        'schedule': crontab(hour=0, minute=17),  
+        'args': ('Mindset',), 
     },
 }
 
