@@ -1,5 +1,5 @@
 from django.urls import include, path
-from .views import UserRegisterAPIView,ForgotPasswordAPIView,VerifyOtpAPIView,ResetPasswordAPIView,AddTargetAPIView,CustomTokenObtainPairView
+from .views import UserRegisterAPIView,ForgotPasswordAPIView,VerifyOtpAPIView,ResetPasswordAPIView,AddTargetAPIView,CustomTokenObtainPairView,DeviceRegisterView
 
 urlpatterns = [
     # Authentication Paths
@@ -13,4 +13,5 @@ urlpatterns = [
     path('veryfy_otp/', VerifyOtpAPIView.as_view(), name="Verify The OTP View"),
     path('reset_password/', ResetPasswordAPIView.as_view(), name="Verify The OTP View"),
     path('add_target/', AddTargetAPIView.as_view(), name="Add Target To User"),
+    path('register_fcm',DeviceRegisterView.as_view(), name="Add FCM Token")
 ]

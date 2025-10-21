@@ -22,6 +22,8 @@ from .views import (
     TrimsAndConditionAPIView,
     PrivacyPolicyRetrieveAPIView,
     TermsAndConditionRetrieveAPIView,
+    ActivateAccountView,
+    SubscriptionPlanListView
 
 )
 
@@ -32,8 +34,9 @@ urlpatterns = [
     path('weekly_user_activity/', WeeklyUserQuoteActivityAPIView.as_view(), name='Dashboard Data'),
     path('subscription_distribution/', SubscriptionDistributionAPIView.as_view(), name='Subscription Distribution'),
     path('users/', UserListView.as_view(), name='user-list'),
-    path('account/deactivate/', DeactivateAccountView.as_view(), name='deactivate-account'),
-    path('account/delete/', DeleteAccountView.as_view(), name='delete-account'),
+    path('account/deactivate/<int:pk>/', DeactivateAccountView.as_view(), name='deactivate-account'),
+    path('account/activate/<int:pk>/', ActivateAccountView.as_view(), name='Activate-account'),
+    path('account/delete/<int:pk>/', DeleteAccountView.as_view(), name='delete-account'),
     path('notifications/', NotificationListCreateView.as_view(), name='notification-list-create'),
     path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
     path('badges/', BadgeListCreateView.as_view(), name='badge-list-create'),
@@ -43,6 +46,7 @@ urlpatterns = [
     path('payments/', PaymentListView.as_view(), name='payment-list'),
     path('payments/<int:pk>/delete/', PaymentDeleteView.as_view(), name='payment-delete'),
     path('subscription-plan/<str:name>/update/', SubscriptionPlanUpdateView.as_view(), name='subscription-plan-update'),
+    path('subscription-plan/list/', SubscriptionPlanListView.as_view(), name='subscription-plan-list'),
     path('admin/privacy-policy/', PrivacyPolicyAPIView.as_view(), name='admin-privacy-policy'),
     path('admin/terms-and-condition/', TrimsAndConditionAPIView.as_view(), name='admin-terms-and-condition'),
     path('privacy-policy/', PrivacyPolicyRetrieveAPIView.as_view(), name='privacy-policy-retrieve'),

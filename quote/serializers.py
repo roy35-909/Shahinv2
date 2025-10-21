@@ -29,3 +29,9 @@ class UserHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = UserQuote
         fields = '__all__'
+
+
+class QuoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quote
+        fields = ['id', 'content', 'category', 'author', 'created_at']

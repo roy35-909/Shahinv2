@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @shared_task
 def generate_quote(topic):
     quote_generator = QuoteGenerator()
-    number = 200
+    number = 20
     for quote in quote_generator.generate_quote(topic, number):
         quote = re.sub(r'^```[\w]*|```$', '', quote).strip()
         print(quote)

@@ -39,11 +39,16 @@ import logging
 from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.db.models import Subquery
-
+from shahin.firebase_utils import send_notification_to_tokens
+from authentication.models import Device
 User = get_user_model()
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+
+
+
 
 @shared_task
 def send_motivation_quote(user_id):
@@ -52,14 +57,19 @@ def send_motivation_quote(user_id):
     """
     print("Hello world , i am sending the quotes")
     print(user_id)
-    user = User.objects.get(id=user_id)
+    try:
+        user = User.objects.get(id=user_id)
+    except:
+        return None
+    
+    tokens = list(Device.objects.filter(user=user).values_list('token', flat=True))
 
     quote = get_relevant_quote(user)
     
     if quote:
 
-        print(f"Sending Push Notification to: {user} , {quote}")
-
+        print(f"Sending Push Notification to: {user} , {quote}, tokens are {tokens}")
+        send_notification_to_tokens(tokens=tokens, title=quote.author, body=quote.content)
         UserQuote.objects.get_or_create(user=user, quote=quote)
 
 def get_relevant_quote(user):
@@ -67,7 +77,7 @@ def get_relevant_quote(user):
     Get a random relevant quote based on the user's interests.
     """
     user_targets = user.target
-    user_quotes = UserQuote.objects.filter(user=user,is_viewed=True).values('quote_id')
+    user_quotes = UserQuote.objects.filter(user=user, is_viewed=True).values('quote_id')
     available_quotes = Quote.objects.exclude(id__in=Subquery(user_quotes))
     available_quotes = available_quotes.filter(category__in=user_targets)
 

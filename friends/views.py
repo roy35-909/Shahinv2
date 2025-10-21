@@ -131,15 +131,19 @@ class SearchUserAPIView(NewAPIView):
 
         if not search_term:
             return Response({'detail': 'Please provide a search term.'}, status=status.HTTP_400_BAD_REQUEST)
+        if (search_term.startswith('"') and search_term.endswith('"')) or \
+           (search_term.startswith("'") and search_term.endswith("'")):
+            search_term = search_term[1:-1].strip()
 
+        print(search_term)
         # Perform a case-insensitive search on both the username (name) and email fields
         users = User.objects.filter(
-            Q(username__icontains=search_term) |
+            Q(first_name__icontains=search_term) |
             Q(email__icontains=search_term)
-        )
+        ).exclude(id=request.user.id)
 
         if users.exists():
-            serializer = UserSearchSerializer(users, many=True)
+            serializer = UserSearchSerializer(users, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({'detail': 'No users found matching the search criteria.'}, status=status.HTTP_404_NOT_FOUND)

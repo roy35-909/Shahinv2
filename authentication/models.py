@@ -174,3 +174,15 @@ class UserBadge(models.Model):
         average_progress = points_progress 
 
         return average_progress
+    
+
+
+class Device(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=512, unique=True)
+    platform = models.CharField(max_length=50, blank=True, null=True)  # android/ios
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.user} - {self.token[:8]}...'

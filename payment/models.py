@@ -24,7 +24,7 @@ class Payment(models.Model):
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    payment_method = models.CharField(max_length=50, default='stripe')  # in case you support other methods later
+    payment_method = models.CharField(max_length=50, default='stripe')  
 
     def __str__(self):
         return f"{self.user.email} - {self.amount} {self.currency} - {self.status}"

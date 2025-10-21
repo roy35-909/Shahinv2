@@ -64,7 +64,7 @@ class LeaderboardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['first_name', 'profile_photo', 'points', 'total_badges', 'streak']
+        fields = ['id','first_name', 'profile_photo', 'points', 'total_badges', 'streak']
 
     def get_total_badges(self, obj):
 
@@ -92,10 +92,9 @@ class PaymentSerializer(serializers.ModelSerializer):
     profile_photo = serializers.ImageField(source='user.profile_photo', required=False)
     email = serializers.EmailField(source='user.email')
     plan = serializers.CharField(source='user.subscription_type', required=False)
-
     class Meta:
         model = Payment
-        fields = ['first_name', 'profile_photo', 'email', 'status', 'amount', 'payment_method', 'created_at','plan']
+        fields = ['id','first_name', 'profile_photo', 'email', 'status', 'amount', 'payment_method', 'created_at','plan']
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
@@ -103,7 +102,10 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
         model = SubscriptionPlan
         fields = ['price'] 
 
-
+class SubscriptionPlanSerializerList(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = ['name','price'] 
 
 class PrivacyPolicySerializer(serializers.ModelSerializer):
     class Meta:

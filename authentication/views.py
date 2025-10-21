@@ -18,7 +18,7 @@ from .models import UserBadge,Badge
 # from google.oauth2 import id_token
 # from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import LoginHistory                                
+from .models import LoginHistory, Device                               
 def send_otp_email(user_email, otp_code):
     subject = "Reset Your Password - MP"
     from_email = settings.EMAIL_HOST_USER
@@ -289,3 +289,16 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             return None
         
 
+
+class DeviceRegisterView(NewAPIView):
+    serializer_class = DeviceSerializer
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        data = request.data
+        device, _ = Device.objects.get_or_create(user=request.user,token = data['token'])
+        ser = DeviceSerializer(device)
+        return Response(ser.data, status=status.HTTP_200_OK)
+    
+
+
+        

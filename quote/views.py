@@ -77,7 +77,7 @@ class ListUserQuoteHistory(NewAPIView):
 
     def get(self, request):
         user = request.user
-        history = UserQuote.objects.filter(user=user).order_by('-id')
+        history = UserQuote.objects.filter(user=user,is_liked=True).order_by('-id')
 
         ser = UserHistorySerializer(history, many=True)
         return s_200(ser)
@@ -96,11 +96,14 @@ class LikedUserQuote(APIView):
             return s_404("UserQuote")
         
         if user_quote.is_liked:
-            pass
+            user_quote.is_liked = False
+            user_quote.save()
+            user.points-=1
+            user.save()
         else:
             user.points+=1
             user.save()
-        user_quote.is_liked = True
+            user_quote.is_liked = True
 
         user_quote.save()
         

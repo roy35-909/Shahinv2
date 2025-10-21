@@ -297,19 +297,37 @@ class UserListView(APIView):
 class DeactivateAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
-        user = request.user
+    def get(self, request,pk):
+        try:
+            user = User.objects.get(id=pk)
+        except:
+            return Response({'error':'User Does Not Exist'}, status=status.HTTP_404_NOT_FOUND)
         user.is_active = False
         user.save()
         return Response({"message": "Account deactivated successfully."}, status=status.HTTP_200_OK)
+
+class ActivateAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request,pk):
+        try:
+            user = User.objects.get(id=pk)
+        except:
+            return Response({'error':'User Does Not Exist'}, status=status.HTTP_404_NOT_FOUND)
+        user.is_active = True
+        user.save()
+        return Response({"message": "Account Activated successfully."}, status=status.HTTP_200_OK)
 
 
 
 class DeleteAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def delete(self, request):
-        user = request.user
+    def delete(self, request,pk):
+        try:
+            user = User.objects.get(id=pk)
+        except:
+            return Response({'error':'User Does Not Exist'}, status=status.HTTP_404_NOT_FOUND)
         user.delete()
         return Response({"message": "Account deleted successfully."}, status=status.HTTP_200_OK)
     
@@ -479,14 +497,12 @@ class PaymentDeleteView(APIView):
         return Response({"detail": "Payment deleted successfully."}, status=status.HTTP_200_OK)
     
 
-class SubscriptionPlanUpdateView(APIView):
+class SubscriptionPlanUpdateView(NewAPIView):
     '''
     <h2> Names Are </h2> \n
     monthly \n
     yearly \n
     lifetime \n
-
-
     '''
     permission_classes = [IsAdminUser]
     serializer_class = SubscriptionPlanSerializer
@@ -503,6 +519,19 @@ class SubscriptionPlanUpdateView(APIView):
             serializer.save()  
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class SubscriptionPlanListView(NewAPIView):
+
+    permission_classes = [IsAdminUser]
+    serializer_class = SubscriptionPlanSerializer
+    def get(self, request):
+
+        subscription_plan = SubscriptionPlan.objects.all()
+
+        serializer = SubscriptionPlanSerializerList(subscription_plan, many=True)
+
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     
 
 
@@ -516,11 +545,16 @@ class PrivacyPolicyAPIView(NewAPIView):
         if 'text' not in data:
             return Response({'error':'missing field text'}, status=status.HTTP_404_NOT_FOUND)
         
-        privacy_policy , created = PrivacyPolicy.objects.get_or_create(id=1,text=data['text'])
-        if not created:
+        privacy_policy = PrivacyPolicy.objects.all()
+
+        if privacy_policy.exists():
+            privacy_policy = privacy_policy.first()
             privacy_policy.text = data['text']
             privacy_policy.save()
-
+        
+        else:
+            privacy_policy = PrivacyPolicy.objects.create(text = data['text'])
+        
         ser = PrivacyPolicySerializer(privacy_policy)
 
         return Response(ser.data, status=status.HTTP_200_OK)
@@ -535,12 +569,17 @@ class TrimsAndConditionAPIView(NewAPIView):
         if 'text' not in data:
             return Response({'error':'missing field text'}, status=status.HTTP_404_NOT_FOUND)
         
-        terms_condition , created = TremsAndCondition.objects.get_or_create(id=1,text=data['text'])
-        if not created:
-            terms_condition.text = data['text']
-            terms_condition.save()
+        privacy_policy = TremsAndCondition.objects.all()
 
-        ser = TremsAndConditionSerializer(terms_condition)
+        if privacy_policy.exists():
+            privacy_policy = privacy_policy.first()
+            privacy_policy.text = data['text']
+            privacy_policy.save()
+        
+        else:
+            privacy_policy = PrivacyPolicy.objects.create(text = data['text'])
+
+        ser = TremsAndConditionSerializer(privacy_policy)
 
         return Response(ser.data, status=status.HTTP_200_OK)
     

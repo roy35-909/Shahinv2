@@ -13,6 +13,3 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'status', 'stripe_payment_intent_id', 'created_at']
 
 
-class MonthlyRevenueSerializer(serializers.Serializer):
-    month = serializers.CharField()
-    revenue = serializers.DecimalField(max_digits=10, decimal_places=2)

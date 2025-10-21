@@ -29,7 +29,7 @@ class AcceptFriendRequestSerializer(serializers.Serializer):
 class UserSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'profile_photo']
+        fields = ['id', 'first_name', 'profile_photo','points']
 
 
 class LeaderboardUserSerializer(serializers.Serializer):

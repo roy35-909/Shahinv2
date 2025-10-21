@@ -9,7 +9,7 @@ from shahin.response import *
 from django.core.exceptions import ObjectDoesNotExist
 from ai.tasks import generate_quote
 from authentication.models import UserBadge
-
+from shahin.firebase_utils import send_notification_to_tokens
 class UserBadgeListAPIView(NewAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserBadgeSerializer
@@ -177,7 +177,8 @@ class PrintQuote(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
-        result = generate_quote.delay('Fitness')
+        # result = generate_quote.delay('Fitness')
+        send_notification_to_tokens(tokens=["d06EoZyuqE0t5aqPEbDBdt:APA91bHwMloHiRgtw3KL7S6G_vDPKI-t-D4Eq_5B7tHkh4MPuoRbTQ6jQ5RgZxEdiHjYtQSBUrZZ8bW7n3fAunLnv8weWF8C-LN6FG9vkynrCDjg3iMvwp0",], title="Testing My Token", body="Hello From Roy")
         return Response({'msg':'success'}, status=status.HTTP_200_OK)
     
     
