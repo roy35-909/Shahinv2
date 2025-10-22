@@ -23,7 +23,8 @@ from .views import (
     PrivacyPolicyRetrieveAPIView,
     TermsAndConditionRetrieveAPIView,
     ActivateAccountView,
-    SubscriptionPlanListView
+    SubscriptionPlanListView,
+    ChangeUserSubscription
 
 )
 
@@ -51,4 +52,5 @@ urlpatterns = [
     path('admin/terms-and-condition/', TrimsAndConditionAPIView.as_view(), name='admin-terms-and-condition'),
     path('privacy-policy/', PrivacyPolicyRetrieveAPIView.as_view(), name='privacy-policy-retrieve'),
     path('terms-and-condition/', TermsAndConditionRetrieveAPIView.as_view(), name='terms-and-condition-retrieve'),
+    path('users/subscription/update/',ChangeUserSubscription.as_view(),name='User Subscription View')
 ]

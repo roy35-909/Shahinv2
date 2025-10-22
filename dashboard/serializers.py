@@ -116,3 +116,8 @@ class TremsAndConditionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TremsAndCondition
         fields = ['text']
+
+
+class UserSubscriptionSerializer(serializers.Serializer):
+    subscription_type = serializers.CharField()
+    user_id = serializers.IntegerField()

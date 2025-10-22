@@ -19,6 +19,8 @@ from django.shortcuts import get_object_or_404
 from authentication.models import Badge
 from authentication.serializers import BadgeSerializer
 from django.db.models import F
+from datetime import timedelta
+from django.utils import timezone
 User = get_user_model()
 # Create your views here.
 class AdminTokenObtainPairView(TokenObtainPairView):
@@ -302,6 +304,8 @@ class DeactivateAccountView(APIView):
             user = User.objects.get(id=pk)
         except:
             return Response({'error':'User Does Not Exist'}, status=status.HTTP_404_NOT_FOUND)
+        if request.user.id == user.id:
+            return Response({'error':'You Are The User.'}, status=status.HTTP_400_BAD_REQUEST)
         user.is_active = False
         user.save()
         return Response({"message": "Account deactivated successfully."}, status=status.HTTP_200_OK)
@@ -382,7 +386,7 @@ class BadgeListCreateView(NewAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        serializer = BadgeSerializer(data=request.data)
+        serializer = BadgeSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -401,7 +405,7 @@ class BadgeDetailView(NewAPIView):
 
     def put(self, request, pk):
         badge = self.get_object(pk)
-        serializer = BadgeSerializer(badge, data=request.data)
+        serializer = BadgeSerializer(badge, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -438,7 +442,7 @@ class LeaderboardView(APIView):
             # Add rank (calculate based on pagination)
             rank = (page.number - 1) * paginator.per_page + idx + 1
             # Serialize the user and add the rank to the data
-            serializer = LeaderboardSerializer(user)
+            serializer = LeaderboardSerializer(user, context={'request': request})
             leaderboard_data.append({'rank': rank, **serializer.data})
 
         # Return paginated response
@@ -478,7 +482,7 @@ class PaymentListView(NewAPIView):
         page = paginator.get_page(page_number)
 
 
-        serializer = PaymentSerializer(page.object_list, many=True)
+        serializer = PaymentSerializer(page.object_list, many=True, context={'request': request})
 
 
         return Response({
@@ -513,7 +517,7 @@ class SubscriptionPlanUpdateView(NewAPIView):
         except SubscriptionPlan.DoesNotExist:
             return Response({"detail": "SubscriptionPlan not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = SubscriptionPlanSerializer(subscription_plan, data=request.data, partial=True)
+        serializer = SubscriptionPlanSerializer(subscription_plan, data=request.data,context={'request': request},partial=True)
 
         if serializer.is_valid():
             serializer.save()  
@@ -527,7 +531,7 @@ class SubscriptionPlanListView(NewAPIView):
 
         subscription_plan = SubscriptionPlan.objects.all()
 
-        serializer = SubscriptionPlanSerializerList(subscription_plan, many=True)
+        serializer = SubscriptionPlanSerializerList(subscription_plan, many=True, context={'request': request})
 
 
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -606,3 +610,37 @@ class TermsAndConditionRetrieveAPIView(APIView):
 
         serializer = TremsAndConditionSerializer(terms_and_condition)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+class ChangeUserSubscription(NewAPIView):
+    permission_classes = [IsAdminUser]
+    serializer_class = UserSubscriptionSerializer
+    def post(self, request):
+
+
+        data = request.data
+        if 'subscription_type' not in data:
+            return Response({'error':'subscription_type not found in request body'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if 'user_id' not in data:
+            return Response({'error':'user_id not found in request body'}, status=status.HTTP_400_BAD_REQUEST)
+        subscription_type = data['subscription_type']
+
+        try:
+            user = User.objects.get(id=data['user_id'])
+        except:
+            return Response({'error':'Not User Found'}, status=status.HTTP_404_NOT_FOUND)
+        user.subscription_type = subscription_type
+        user.subscription_start = timezone.now()
+        if subscription_type == 'monthly':
+            user.subscription_end = timezone.now() + timedelta(days=30)
+        elif subscription_type == 'yearly':
+            user.subscription_end = timezone.now() + timedelta(days=365)
+        elif subscription_type == 'lifetime':
+            user.subscription_end = None
+
+        # Need A Peroadic Task Here
+        user.save()
+
+        return Response({'success':'User Subscription Updated Successfully'})

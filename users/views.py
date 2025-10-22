@@ -18,7 +18,7 @@ class UserBadgeListAPIView(NewAPIView):
         user = request.user
 
         user_badges = UserBadge.objects.filter(user=user)
-        serializer = UserBadgeSerializer(user_badges, many=True)
+        serializer = UserBadgeSerializer(user_badges, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
@@ -54,7 +54,7 @@ class UserProfilePhotoUpdateAPIView(NewAPIView):
     serializer_class = UserProfilePhotoSerializer
     def put(self, request):
         serializer = UserProfilePhotoSerializer(
-            request.user, data=request.data, partial=True
+            request.user, data=request.data, partial=True, context={'request': request}
         )
         if serializer.is_valid():
             serializer.save()
@@ -79,7 +79,7 @@ class UserUpdateAPIView(NewAPIView):
             return Response({"email": "This email is already taken."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Partial update with serializer (no validation logic here)
-        serializer = UserUpdateSerializer(user, data=data, partial=True)
+        serializer = UserUpdateSerializer(user, data=data, partial=True, context={'request': request})
 
         if serializer.is_valid():
             serializer.save()
@@ -111,7 +111,7 @@ class UserUpdateAPIView(NewAPIView):
         if new_email and User.objects.exclude(pk=user.pk).filter(email=new_email).exists():
             return Response({"email": "This email is already taken."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = UserUpdateSerializer(user, data=data, partial=True)
+        serializer = UserUpdateSerializer(user, data=data, partial=True, context={'request': request})
 
         if serializer.is_valid():
             serializer.save()
@@ -129,7 +129,7 @@ class GetUserProfileAPIView(NewAPIView):
 
     def get(self, request):
         """Get logged-in user profile"""
-        serializer = UserUpdateSerializer(request.user)
+        serializer = UserUpdateSerializer(request.user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
@@ -159,7 +159,7 @@ class SupportCreateAPIView(NewAPIView):
     permission_classes = [AllowAny]
     serializer_class = SupportSerializer
     def post(self, request, *args, **kwargs):
-        serializer = SupportSerializer(data=request.data)
+        serializer = SupportSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)

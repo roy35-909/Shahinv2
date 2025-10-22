@@ -27,9 +27,25 @@ class AcceptFriendRequestSerializer(serializers.Serializer):
 
 
 class UserSearchSerializer(serializers.ModelSerializer):
+    status = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'profile_photo','points']
+        fields = ['id', 'first_name', 'profile_photo','points','status']
+
+    def get_status(self, obj):
+        request = self.context.get('request', None)
+        if request and hasattr(request, 'user'):
+            current_user = request.user
+            try:
+                friendship = Friendship.objects.get(user1=current_user,user2=obj)
+            except:
+                return "not-friend"
+            
+            return friendship.status
+
+
+        return None
+
 
 
 class LeaderboardUserSerializer(serializers.Serializer):
