@@ -50,6 +50,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'rest_framework.authtoken',
     'rest_framework',
     'django_celery_beat',
     'authentication',
@@ -70,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = 'shahin.urls'
@@ -164,7 +170,7 @@ SIMPLE_JWT = {
 }
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'social_core.backends.google.GoogleOAuth2',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 REDIRECT_URI = ['http://localhost:3000/googleoAuth/','http://localhost:8000/googleoAuth/']
 
@@ -219,22 +225,32 @@ LOGGING = {
         },
     },
 }
-DJOSER = {
-    'SEND_ACTIVATION_EMAIL': False,
-    'SERIALIZERS': {
-        'user_create': 'authentication.serializers.UserCreateSerializers',
-        'user': 'authentication.serializers.UserCreateSerializers',
-        'user_delete': 'djoser.serializers.UserDeleteSerializer',
-        'user_create_password_retype':'authentication.serializers.UserCreateSerializers',
-    },
-    'LOGIN_FIELD':'email',
-    'USER_CREATE_PASSWORD_RETYPE':True,
-    'SEND_CONFIRMATION_EMAIL':False,
-    'TOKEN_MODEL':None,
-    'SOCIAL_AUTH_TOKEN_STRATEGY': 'djoser.social.token.jwt.TokenStrategy',
-    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS' : REDIRECT_URI
-}
+# DJOSER = {
+#     'SEND_ACTIVATION_EMAIL': False,
+#     'SERIALIZERS': {
+#         'user_create': 'authentication.serializers.UserCreateSerializers',
+#         'user': 'authentication.serializers.UserCreateSerializers',
+#         'user_delete': 'djoser.serializers.UserDeleteSerializer',
+#         'user_create_password_retype':'authentication.serializers.UserCreateSerializers',
+#     },
+#     'LOGIN_FIELD':'email',
+#     'USER_CREATE_PASSWORD_RETYPE':True,
+#     'SEND_CONFIRMATION_EMAIL':False,
+#     'TOKEN_MODEL':None,
+#     'SOCIAL_AUTH_TOKEN_STRATEGY': 'djoser.social.token.jwt.TokenStrategy',
+#     'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS' : REDIRECT_URI
+# }
 
+# SOCIALACCOUNT_PROVIDERS = {
+#     "google": {
+#         "APP": {
+#             "client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
+#             "secret": os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+#             "key": "",
+#         },
+#         "OAUTH_PKCE_ENABLED": True,
+#     }
+# }
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Using Redis as the broker
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -284,11 +300,7 @@ SESSION_COOKIE_NAME = 'sessionid'
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 # SESSION_COOKIE_SAMESITE = "NONE"
 
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY')
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET')
-SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["https://www.googleapis.com/auth/userinfo.email","https://www.googleapis.com/auth/userinfo.profile","openid"]
-SOCIAL_AUTH_GOOGLE_OAUTH2_EXTRA_DATA = ['first_name','last_name']
-GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+
 OPENAI_API_KEY=env('OPENAI_API_KEY')
 
 
@@ -296,3 +308,13 @@ OPENAI_API_KEY=env('OPENAI_API_KEY')
 
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET')
+
+
+SITE_ID = 1
+
+# ACCOUNT_AUTHENTICATION_METHOD = "email"  # Use Email / Password authentication
+# ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_EMAIL_REQUIRED = True
+# ACCOUNT_EMAIL_VERIFICATION = "none" # Do not require email confirmation
+# LOGIN_REDIRECT_URL = '/'
+# LOGOUT_REDIRECT_URL = '/'

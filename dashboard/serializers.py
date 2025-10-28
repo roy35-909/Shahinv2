@@ -43,7 +43,16 @@ class UserListSerializer(serializers.ModelSerializer):
         fields = ['id', 'first_name', 'email', 'profile_photo', 'is_active', 'type', 'join_date', 'last_activity','level']
 
     def get_type(self, obj):
-        return "Premium" if obj.subscription_type != 'free' else "Free"
+        if obj.subscription_type == 'free':
+            return "Free"
+        elif obj.subscription_type == 'monthly':
+            return "Premium Monthly"
+        elif obj.subscription_type == 'yearly':
+            return "Premium Yearly"
+        elif obj.subscription_type == 'lifetime':
+            return "Premium Forever"
+        else:
+            return None
     
     def get_level(self,obj):
         return 10

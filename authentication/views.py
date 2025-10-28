@@ -18,7 +18,10 @@ from .models import UserBadge,Badge
 # from google.oauth2 import id_token
 # from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import LoginHistory, Device                               
+from .models import LoginHistory, Device 
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client                              
 def send_otp_email(user_email, otp_code):
     subject = "Reset Your Password - MP"
     from_email = settings.EMAIL_HOST_USER
@@ -301,4 +304,8 @@ class DeviceRegisterView(NewAPIView):
     
 
 
-        
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    client_class = OAuth2Client
+    callback_url = "http://localhost:8000/accounts/google/login/callback/"

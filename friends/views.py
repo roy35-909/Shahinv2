@@ -16,26 +16,49 @@ User = get_user_model()
 class SendFriendRequestAPIView(NewAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = SendFriendRequestSerializer
+
     def post(self, request, *args, **kwargs):
         user1 = request.user
         user2_id = request.data.get('user2_id')
+
 
         try:
             user2 = User.objects.get(id=user2_id)
         except User.DoesNotExist:
             return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        
-        friendship, created = Friendship.objects.get_or_create(user1=user1, user2=user2)
-        
-        if not created:
-            if friendship.status != Friendship.PENDING:
-                return Response({'detail': 'Friend request already sent or accepted/rejected.'}, status=status.HTTP_400_BAD_REQUEST)
-            return Response({'detail': 'Friend request is already pending.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        
-        friendship.send_request()
-        return Response(FriendshipSerializer(friendship).data, status=status.HTTP_201_CREATED)
+
+        friendship = Friendship.objects.filter(
+            Q(user1=user1, user2=user2) | Q(user1=user2, user2=user1)
+        ).first()
+
+        if friendship:
+
+            if friendship.status == Friendship.ACCEPTED:
+                return Response({'detail': 'You are already friends.', 'status': 'friends'}, status=status.HTTP_400_BAD_REQUEST)
+
+     
+            if friendship.status == Friendship.PENDING and friendship.user1 == user1:
+                return Response({'detail': 'Friend request already sent.', 'status': 'request-sent'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            if friendship.status == Friendship.PENDING and friendship.user1 == user2:
+                return Response({'detail': 'User has already sent you a friend request.', 'status': 'request-received'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            return Response({'detail': f'Cannot send request. Status: {friendship.status}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        friendship = Friendship.objects.create(user1=user1, user2=user2, status=Friendship.PENDING)
+        friendship.send_request()  
+
+        return Response({
+            'friendship_id': friendship.id,
+            'first_name': friendship.user2.first_name,
+            'profile_photo': request.build_absolute_uri(friendship.user2.profile_photo.url) if friendship.user2.profile_photo else None,
+            'points': friendship.user2.points,
+            'status': 'request-sent'
+        }, status=status.HTTP_201_CREATED)
 
 
 class AcceptFriendRequestAPIView(NewAPIView):
@@ -57,7 +80,13 @@ class AcceptFriendRequestAPIView(NewAPIView):
 
         # Accept the friend request
         friendship.accept_request()
-        return Response(FriendshipSerializer(friendship).data, status=status.HTTP_200_OK)
+        return Response({
+        'friendship_id':friendship.id, 
+        'first_name':friendship.user2.first_name, 
+        'profile_photo':request.build_absolute_uri(friendship.user2.profile_photo.url) if friendship.user2.profile_photo else None, 
+        'points':friendship.user2.points, 
+        'status':'friends'}, 
+        status=status.HTTP_200_OK)
 
 
 class ListFriendRequestsAPIView(NewAPIView):
@@ -67,7 +96,7 @@ class ListFriendRequestsAPIView(NewAPIView):
         user = request.user
         # Get all pending requests for this user (requests they are receiving)
         pending_requests = Friendship.objects.filter(user2=user, status=Friendship.PENDING)
-        serializer = FriendshipSerializer(pending_requests, many=True)
+        serializer = ListFriendRequestSerializer(pending_requests, many=True, context = {'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -76,6 +105,7 @@ class CancelFriendRequestAPIView(NewAPIView):
     serializer_class = AcceptFriendRequestSerializer
     def post(self, request, *args, **kwargs):
         user = request.user  # Current authenticated user
+
         friendship_id = request.data.get('friendship_id')
 
         try:
@@ -90,7 +120,32 @@ class CancelFriendRequestAPIView(NewAPIView):
 
         # Cancel the request (delete the friendship)
         friendship.cancel_request()
-        return Response({'detail': 'Friend request canceled.'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'Friend request canceled.'}, status=status.HTTP_200_OK)
+    
+class RejectFriendRequestAPIView(NewAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AcceptFriendRequestSerializer
+
+    def post(self, request, *args, **kwargs):
+        user = request.user  # current authenticated user
+        friendship_id = request.data.get('friendship_id')
+
+        try:
+            friendship = Friendship.objects.get(id=friendship_id)
+        except Friendship.DoesNotExist:
+            return Response({'detail': 'Friendship not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if this user is the receiver of the friend request
+        if friendship.user2 != user or friendship.status != Friendship.PENDING:
+            return Response(
+                {'detail': 'Friend request cannot be rejected by this user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Reject means deleting the friendship object
+        friendship.delete()
+
+        return Response({'detail': 'Friend request rejected and removed.'}, status=status.HTTP_200_OK)
 
 
 class ListFriendsAPIView(APIView):
@@ -153,7 +208,7 @@ class SearchUserAPIView(NewAPIView):
 
 class LeaderboardAPIView(NewAPIView):
     """
-    Leaderboard API with badges
+    Leaderboard API with badges.
     Shows weekly, monthly, and all-time top users
     based on their total activity from UserQuote.
     """
@@ -166,48 +221,56 @@ class LeaderboardAPIView(NewAPIView):
         month_start = now - timedelta(days=30)
 
         def build_leaderboard(time_filter=None):
-            queryset = UserQuote.objects.all()
+            queryset = UserQuote.objects.select_related("user")
+
             if time_filter:
                 queryset = queryset.filter(sent_at__gte=time_filter)
 
             leaderboard = (
                 queryset
-                .values(
-                    "user__id",
-                    "user__first_name",
-                    "user__profile_photo",
-                    "user__subscription_type"
-                )
+                .values("user")
                 .annotate(total_points=Count("id"))
                 .order_by("-total_points")[:10]
             )
 
+            # Get all user objects for the leaderboard
+            user_ids = [item["user"] for item in leaderboard]
+            users = User.objects.filter(id__in=user_ids)
+            user_map = {u.id: u for u in users}
+
             results = []
-            for u in leaderboard:
-                user_id = u["user__id"]
+            for index, item in enumerate(leaderboard, start=1):
+                user_obj = user_map.get(item["user"])
+                if not user_obj:
+                    continue
 
-                # Fetch all badges for this user (optional: only completed ones)
-                user_badge = UserBadge.objects.filter(user_id=user_id, is_completed=True).order_by('-id').first()
-
-                # badges_data = [
-                #     {
-                #         "badge_id": b.badge.id,
-                #         "badge_name": b.badge.name,
-                #         "is_completed": b.is_completed,
-                #     }
-                #     for b in user_badges
-                # ]
+                total_points = item["total_points"]
+                user_badge = (
+                    UserBadge.objects.filter(user=user_obj, is_completed=True)
+                    .order_by("-id")
+                    .first()
+                )
 
                 results.append({
-                    "user_id": user_id,
-                    "first_name": u["user__first_name"],
-                    "profile_photo": u["user__profile_photo"],
-                    "subscription_type": u["user__subscription_type"],
-                    "total_points": u["total_points"],
+                    "user_id": user_obj.id,
+                    "first_name": user_obj.first_name,
+                    "profile_photo": (
+                        request.build_absolute_uri(user_obj.profile_photo.url)
+                        if user_obj.profile_photo else None
+                    ),
+                    "subscription_type": getattr(user_obj, "subscription_type", "free"),
+                    "total_points": total_points,
+                    "level": total_points / 20,
+                    "rank": index,
                     "badge": {
                         "badge_id": user_badge.badge.id if user_badge else None,
                         "badge_name": user_badge.badge.name if user_badge else None,
                         "is_completed": user_badge.is_completed if user_badge else False,
+                        "image": (
+                            request.build_absolute_uri(user_badge.badge.image.url)
+                            if (user_badge and user_badge.badge and user_badge.badge.image)
+                            else None
+                        )
                     },
                 })
 
@@ -264,20 +327,27 @@ class FriendLeaderboardAPIView(APIView):
             all_users = User.objects.filter(id__in=friend_ids)
 
             results = []
-            for u in all_users:
+            for index, u in enumerate(all_users, start=1):
                 user_badge = UserBadge.objects.filter(user=u, is_completed=True).order_by('-id').first()
                 total_points = user_data_map.get(u.id, {}).get("total_points", 0)
 
                 results.append({
                     "user_id": u.id,
                     "first_name": u.first_name,
-                    "profile_photo": u.profile_photo.url if getattr(u, 'profile_photo', None) else None,
+                    "profile_photo": request.build_absolute_uri(u.profile_photo.url) if getattr(u, 'profile_photo', None) else None,
                     "subscription_type": getattr(u, 'subscription_type', 'free'),
                     "total_points": total_points,
+                    "level":total_points/20,
+                    "rank": index,
                     "badge": {
                         "badge_id": user_badge.badge.id if user_badge else None,
                         "badge_name": user_badge.badge.name if user_badge else None,
                         "is_completed": user_badge.is_completed if user_badge else False,
+                        "image": (
+                        request.build_absolute_uri(user_badge.badge.image.url)
+                        if (user_badge and user_badge.badge and user_badge.badge.image)
+                        else None
+                    )
                     }
                 })
 

@@ -6,6 +6,7 @@ urlpatterns = [
     path('accept_friend_request/', views.AcceptFriendRequestAPIView.as_view(), name='accept_friend_request'),
     path('list_friend_requests/', views.ListFriendRequestsAPIView.as_view(), name='list_friend_requests'),
     path('cancel_friend_request/', views.CancelFriendRequestAPIView.as_view(), name='cancel_friend_request'),
+    path('reject_friend_request/', views.RejectFriendRequestAPIView.as_view(), name='reject_friend_request'),
     path('list_friends/', views.ListFriendsAPIView.as_view(), name='list_friends'),
     path('friends/search/', views.SearchUserAPIView.as_view(), name='search_user'),
     

@@ -19,6 +19,7 @@ class Payment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
     stripe_payment_intent_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_session_id = models.CharField(max_length=255, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=10, default='USD')
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -27,4 +28,4 @@ class Payment(models.Model):
     payment_method = models.CharField(max_length=50, default='stripe')  
 
     def __str__(self):
-        return f"{self.user.email} - {self.amount} {self.currency} - {self.status}"
+        return f"{self.user.email} - {self.amount} {self.currency} - {self.status} - {self.created_at}"

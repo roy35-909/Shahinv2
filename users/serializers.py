@@ -24,19 +24,19 @@ class UserBadgeSerializer(serializers.ModelSerializer):
             return 100 if points_earned > 0 else 0
         
         percentage = (points_earned / points_required) * 100
-        if obj.badge.name == 'Tracker':
-            other_critaria_percentage = has_logged_in_seven_consecutive_days(obj.user)
-            percentage = min(percentage,100)
-            print(f"User Points is {percentage}")
-            print(f"Other Percentage is {other_critaria_percentage}")
-            percentage = (percentage+other_critaria_percentage)/2
-            return min(percentage,100)
-        if obj.badge.name == 'Hunter':
-            other_critaria_percentage = has_share_10_quote_on_social_media(obj.user)
-            percentage = min(percentage,100)
-            percentage = (percentage+other_critaria_percentage)/2
-            return min(percentage,100)
-        return min(percentage, 100)
+        # if obj.badge.name == 'Tracker':
+        #     other_critaria_percentage = has_logged_in_seven_consecutive_days(obj.user)
+        #     percentage = min(percentage,100)
+        #     print(f"User Points is {percentage}")
+        #     print(f"Other Percentage is {other_critaria_percentage}")
+        #     percentage = (percentage+other_critaria_percentage)/2
+        #     return min(int(percentage),100)
+        # if obj.badge.name == 'Hunter':
+        #     other_critaria_percentage = has_share_10_quote_on_social_media(obj.user)
+        #     percentage = min(percentage,100)
+        #     percentage = (percentage+other_critaria_percentage)/2
+        #     return min(int(percentage),100)
+        return min(int(percentage), 100)
     
 class UserProfilePhotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,11 +46,13 @@ class UserProfilePhotoSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
+    level = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ["first_name", "email", "city", "date_of_birth","profile_photo","phone"]
+        fields = ["first_name", "email", "points", "level","profile_photo","phone"]
 
-
+    def get_level(self, obj):
+        return int(obj.points/20) if obj.points else None
 
 
 class ChangePasswordSerializer(serializers.Serializer):

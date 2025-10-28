@@ -22,11 +22,11 @@ class Notifications(models.Model):
 
 
 class PrivacyPolicy(models.Model):
-    text = models.TextField(max_length=1000)
+    text = models.TextField(max_length=2000)
 
 
 class TremsAndCondition(models.Model):
-    text = models.TextField(max_length=1000)
+    text = models.TextField(max_length=2000)
 
 
     

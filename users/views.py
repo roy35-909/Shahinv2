@@ -31,22 +31,24 @@ class UnloackABadge(APIView):
             badge = Badge.objects.get(id=pk)
         except(ObjectDoesNotExist):
             return s_404("Badge")
-        if badge.points_required >= user.points:
-
-            if badge.name == 'Tracker':
-                percentage = has_logged_in_seven_consecutive_days(user)
-                percentage = min(percentage,100)
-                if percentage <100:
-                    return Response({"error":"User Not Able To Unlock This Badge"})
-            if badge.name == 'Hunter':
-                percentage= has_share_10_quote_on_social_media(user)
-                if percentage <100:
-                    return Response({"error":"User Not Able To Unlock This Badge"})
+        if badge.points_required <= user.points:
+            # percentage = 100
+            # if badge.name == 'Tracker':
+            #     # percentage = has_logged_in_seven_consecutive_days(user)
+            #     # percentage = min(percentage,100)
+            #     if percentage <100:
+            #         return Response({"error":"User Not Able To Unlock This Badge"}, status=status.HTTP_400_BAD_REQUEST)
+            # if badge.name == 'Hunter':
+            #     percentage= has_share_10_quote_on_social_media(user)
+            #     if percentage <100:
+            #         return Response({"error":"User Not Able To Unlock This Badge"}, status=status.HTTP_400_BAD_REQUEST)
 
             user_badge,created = UserBadge.objects.get_or_create(user=user,badge=badge)
             user_badge.is_completed = True
             user_badge.save()
-            return Response({"success":f"{user_badge.badge.name} Badge Unlocked"})
+            return Response({"success":f"{user_badge.badge.name} Badge Unlocked"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error":"User Not Able To Unlock This Badge"}, status=status.HTTP_400_BAD_REQUEST)
         
 
 class UserProfilePhotoUpdateAPIView(NewAPIView):
@@ -178,7 +180,9 @@ class PrintQuote(APIView):
     
     def get(self, request):
         # result = generate_quote.delay('Fitness')
-        send_notification_to_tokens(tokens=["d06EoZyuqE0t5aqPEbDBdt:APA91bHwMloHiRgtw3KL7S6G_vDPKI-t-D4Eq_5B7tHkh4MPuoRbTQ6jQ5RgZxEdiHjYtQSBUrZZ8bW7n3fAunLnv8weWF8C-LN6FG9vkynrCDjg3iMvwp0",], title="Testing My Token", body="Hello From Roy")
+        send_notification_to_tokens(tokens=["ejdjB9OHTmqaNa3QLhe4MG:APA91bEpeW4ThCOHMJ2nRyUqYUTt-vNQb8F4x4S5J0FNTSPtwe2I7miuaoZf-QqjZVnXgSDw_1B2CrO-OgAynOKu7p9nhXDUVhRJrOhVbC6WN0UkZR00qgE",], title="This Is the Final Test", body="Hello World! This is a test notification from Shahin App.")
+        # from payment.tasks import expire_subscription
+        # expire_subscription.apply_async(args=[request.user.id], countdown=10)
         return Response({'msg':'success'}, status=status.HTTP_200_OK)
     
     

@@ -1,4 +1,6 @@
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django.utils.timezone import make_aware, is_naive
+from dashboard.tasks import send_notification_to_user
 from .serializers import *
 from django.contrib.auth import get_user_model
 from rest_framework import permissions, status
@@ -347,8 +349,37 @@ class NotificationListCreateView(NewAPIView):
     def post(self, request):
         serializer = NotificationSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            notification = serializer.save()  # Save and get instance
+
+            # Determine target users
+            if notification.users == 'all_user':
+                users = User.objects.filter(is_active=True)
+            elif notification.users == 'free':
+                users = User.objects.filter(is_active=True, subscription_plan='Free')
+            elif notification.users == 'premium':
+                users = User.objects.filter(is_active=True).exclude(subscription_plan='Free')
+            else:
+                users = User.objects.filter(is_active=True)
+
+            user_ids = list(users.values_list('id', flat=True))
+
+            # Get scheduled time
+            scheduled_time = notification.time
+            if is_naive(scheduled_time):
+                scheduled_time = make_aware(scheduled_time)
+
+            # Schedule the Celery task
+            send_notification_to_user.apply_async(
+                kwargs={
+                    "users": user_ids,
+                    "title": notification.title,
+                    "body": notification.descriptions
+                },
+                eta=scheduled_time
+            )
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

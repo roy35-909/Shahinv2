@@ -153,7 +153,7 @@ class Badge(models.Model):
     description = models.TextField()
     points_required = models.IntegerField()   
     image = models.ImageField(upload_to="badge_images/", null=True, blank=True)  
-
+    level_required = models.IntegerField(default=0)
     def __str__(self):
         return self.name
 
