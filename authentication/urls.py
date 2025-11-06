@@ -1,5 +1,5 @@
 from django.urls import include, path
-from .views import UserRegisterAPIView,ForgotPasswordAPIView,VerifyOtpAPIView,ResetPasswordAPIView,AddTargetAPIView,CustomTokenObtainPairView,DeviceRegisterView,GoogleLogin
+from .views import UserRegisterAPIView,ForgotPasswordAPIView,VerifyOtpAPIView,ResetPasswordAPIView,AddTargetAPIView,CustomTokenObtainPairView,DeviceRegisterView,GoogleLogin, AppleLoginView, GoogleLoginAPIView
 urlpatterns = [
     # Authentication Paths
     path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -15,5 +15,6 @@ urlpatterns = [
     path('reset_password/', ResetPasswordAPIView.as_view(), name="Verify The OTP View"),
     path('add_target/', AddTargetAPIView.as_view(), name="Add Target To User"),
     path('register_fcm',DeviceRegisterView.as_view(), name="Add FCM Token"),
-
+    # path('apple_login/', AppleLoginView.as_view(), name="Apple Login API View"),
+    path('auth/', GoogleLoginAPIView.as_view(), name="Google Login API View"),
 ]

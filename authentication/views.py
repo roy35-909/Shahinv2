@@ -21,7 +21,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import LoginHistory, Device 
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
-from allauth.socialaccount.providers.oauth2.client import OAuth2Client                              
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client   
+from rest_framework.authtoken.models import Token
+
+
+from .utils import verify_apple_token, verify_google_token,verify_firebase_token                   
 def send_otp_email(user_email, otp_code):
     subject = "Reset Your Password - MP"
     from_email = settings.EMAIL_HOST_USER
@@ -309,3 +313,64 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
     callback_url = "http://localhost:8000/accounts/google/login/callback/"
+
+
+class AppleLoginView(NewAPIView):
+    serializer_class = AppleLoginSerializer
+    permission_classes = [AllowAny]
+    def post(self, request):
+        identity_token = request.data.get("identity_token")
+        if not identity_token:
+            return Response({"error": "Missing identity_token"}, status=400)
+
+        try:
+            decoded = verify_apple_token(identity_token)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+        email = decoded.get("email")
+        apple_user_id = decoded.get("sub")
+
+        user, created = User.objects.get_or_create(
+            defaults={"email": email or f"{apple_user_id}@apple.com"},
+            first_name = request.data.get("full_name","Apple User"),
+        )
+        token = RefreshToken.for_user(user)
+
+
+        return Response({
+            "access": token.acess_token,
+            "user": {"id": user.id, "email": user.email}
+        }, status=200)
+    
+
+class GoogleLoginAPIView(NewAPIView):
+    """
+    POST /auth/google/
+    {
+        "identity_token": "<id_token_from_flutter>"
+    }
+    """
+    serializer_class = GoogleLoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        identity_token = serializer.validated_data["idToken"]
+        print(identity_token)
+        decoded = verify_firebase_token(identity_token)
+        if not decoded:
+            return Response({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+        uid = decoded["uid"]
+        email = decoded.get("email")
+        provider = decoded.get("firebase", {}).get("sign_in_provider")
+
+        user, _ = User.objects.get_or_create(email=email, defaults={"username": uid})
+        token = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(token.access_token),
+            "refresh": str(token)
+        })
+    

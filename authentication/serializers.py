@@ -77,3 +77,15 @@ class DeviceSerializer(serializers.ModelSerializer):
         model = Device
 
         fields = ['token', 'platform']
+
+
+class AppleLoginSerializer(serializers.Serializer):
+    identity_token = serializers.CharField(required=True, help_text="Apple identity token (JWT)")
+    full_name = serializers.CharField(required=False, allow_blank=True)
+
+class GoogleLoginSerializer(serializers.Serializer):
+    idToken = serializers.CharField(required=True)
+    email = serializers.EmailField(required=False)
+    first_name = serializers.CharField(required=False)
+    provider = serializers.CharField(required=False)
+    

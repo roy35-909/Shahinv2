@@ -49,7 +49,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     level = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ["first_name", "email", "points", "level","profile_photo","phone"]
+        fields = ["first_name", "email", "points", "level","profile_photo","phone","subscription_type"]
 
     def get_level(self, obj):
         return int(obj.points/20) if obj.points else None
@@ -64,3 +64,5 @@ class SupportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Support
         fields = ['id', 'email', 'description', 'file']
+
+        
