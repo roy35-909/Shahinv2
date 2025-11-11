@@ -413,7 +413,7 @@ class BadgeListCreateView(NewAPIView):
     serializer_class = BadgeSerializer
     def get(self, request):
         badges = Badge.objects.all()
-        serializer = BadgeSerializer(badges, many=True)
+        serializer = BadgeSerializer(badges, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
@@ -431,7 +431,7 @@ class BadgeDetailView(NewAPIView):
 
     def get(self, request, pk):
         badge = self.get_object(pk)
-        serializer = BadgeSerializer(badge)
+        serializer = BadgeSerializer(badge, context={'request': request})
         return Response(serializer.data)
 
     def put(self, request, pk):
