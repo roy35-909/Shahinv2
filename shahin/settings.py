@@ -39,6 +39,7 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'https://satirical-marin-quittable.ngrok-free.dev',
     'http://localhost:8888'
+    'https://api.stayalpha.de'
 ]
 
 # Application definition

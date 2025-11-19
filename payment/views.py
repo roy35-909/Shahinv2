@@ -107,7 +107,7 @@ class SubscribeUserAPIView(APIView):
 
         # 👇 Use your backend domain here
         backend_domain = request.build_absolute_uri('/')[:-1]
-
+        print(backend_domain)
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             mode='payment',
