@@ -25,7 +25,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from rest_framework.authtoken.models import Token
 
 
-from .utils import verify_apple_token, verify_google_token,verify_firebase_token                   
+from .utils import verify_apple_token,verify_firebase_token                   
 def send_otp_email(user_email, otp_code):
     subject = "Reset Your Password - MP"
     from_email = settings.EMAIL_HOST_USER
@@ -344,33 +344,73 @@ class AppleLoginView(NewAPIView):
         }, status=200)
     
 
-class GoogleLoginAPIView(NewAPIView):
+# class GoogleLoginAPIView(NewAPIView):
+#     """
+#     POST /auth/google/
+#     {
+#         "identity_token": "<id_token_from_flutter>"
+#     }
+#     """
+#     serializer_class = GoogleLoginSerializer
+#     permission_classes = [AllowAny]
+
+#     def post(self, request):
+#         serializer = GoogleLoginSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         identity_token = serializer.validated_data["idToken"]
+#         print(identity_token)
+#         decoded = verify_firebase_token(identity_token)
+#         if not decoded:
+#             return Response({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+#         uid = decoded["uid"]
+#         email = decoded.get("email")
+#         provider = decoded.get("firebase", {}).get("sign_in_provider")
+
+#         user, _ = User.objects.get_or_create(email=email, defaults={"username": uid})
+#         token = RefreshToken.for_user(user)
+
+#         return Response({
+#             "access": str(token.access_token),
+#             "refresh": str(token)
+#         })
+    
+class GoogleLoginAPIView(APIView):
     """
-    POST /auth/google/
+    POST /auth/google/ OR /auth/apple/
+    Payload:
     {
-        "identity_token": "<id_token_from_flutter>"
+        "idToken": "<firebase_id_token>",
+        "provider": "google.com" | "apple.com"
     }
     """
     serializer_class = GoogleLoginSerializer
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = GoogleLoginSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        identity_token = serializer.validated_data["idToken"]
-        print(identity_token)
-        decoded = verify_firebase_token(identity_token)
-        if not decoded:
-            return Response({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
-        uid = decoded["uid"]
-        email = decoded.get("email")
-        provider = decoded.get("firebase", {}).get("sign_in_provider")
 
-        user, _ = User.objects.get_or_create(email=email, defaults={"username": uid})
+        id_token_value = serializer.validated_data["idToken"]
+        provider = serializer.validated_data["provider"].lower()
+
+        # Verify Firebase ID token
+        if provider in ["apple.com", "apple"]:
+            email = serializer.validated_data.get("email")
+            provider_name = "apple.com"
+        else:
+            decoded = verify_firebase_token(id_token_value)
+            if not decoded:
+                return Response({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            uid = decoded["uid"]
+            email = decoded.get("email")
+            provider_name = decoded.get("firebase", {}).get("sign_in_provider")
+
+        # Create or get user
+        user, _ = User.objects.get_or_create(email=email)
         token = RefreshToken.for_user(user)
-
+        print(provider_name)
         return Response({
             "access": str(token.access_token),
-            "refresh": str(token)
+            "refresh": str(token),
         })
-    

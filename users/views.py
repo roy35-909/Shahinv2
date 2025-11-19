@@ -180,7 +180,7 @@ class PrintQuote(APIView):
     
     def get(self, request):
         # result = generate_quote.delay('Fitness')
-        send_notification_to_tokens(tokens=["ejdjB9OHTmqaNa3QLhe4MG:APA91bEpeW4ThCOHMJ2nRyUqYUTt-vNQb8F4x4S5J0FNTSPtwe2I7miuaoZf-QqjZVnXgSDw_1B2CrO-OgAynOKu7p9nhXDUVhRJrOhVbC6WN0UkZR00qgE",], title="This Is the Final Test", body="Hello World! This is a test notification from Shahin App.")
+        send_notification_to_tokens(tokens=["cQzsvyrLQYaXdP87d9kY6c:APA91bGAFRLo7FUA5f6VcvODKZfgG9XYvuLUJRCp0G-NKJcYdA_J87hwkz8jxpHQOdYZQ4MbnYH4RCyYcyIvFxdKFROJLy4kk49bSRa6aFPjhXMDc6BXQGs",], title="This Is the Final Test", body="Hello World! This is a test notification from Shahin App.")
         # from payment.tasks import expire_subscription
         # expire_subscription.apply_async(args=[request.user.id], countdown=10)
         return Response({'msg':'success'}, status=status.HTTP_200_OK)
