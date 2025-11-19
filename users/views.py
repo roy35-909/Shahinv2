@@ -10,6 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from ai.tasks import generate_quote
 from authentication.models import UserBadge
 from shahin.firebase_utils import send_notification_to_tokens
+from django.shortcuts import get_object_or_404
 class UserBadgeListAPIView(NewAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserBadgeSerializer
@@ -180,9 +181,29 @@ class PrintQuote(APIView):
     
     def get(self, request):
         # result = generate_quote.delay('Fitness')
-        send_notification_to_tokens(tokens=["cQzsvyrLQYaXdP87d9kY6c:APA91bGAFRLo7FUA5f6VcvODKZfgG9XYvuLUJRCp0G-NKJcYdA_J87hwkz8jxpHQOdYZQ4MbnYH4RCyYcyIvFxdKFROJLy4kk49bSRa6aFPjhXMDc6BXQGs",], title="This Is the Final Test", body="Hello World! This is a test notification from Shahin App.")
+        send_notification_to_tokens(tokens=["fWXiqUZsbE0buJbxdy22-H:APA91bGi-Dlo6PT4eLl6OK6AuP2U3rM8czVFm6evxPOGsV-_e39HZSCc95yjG4RGUa7DfX_ZmWCXUH_fHZavJc9nYSlHdD86NLMOiCeJ31ekrtx7nZ4acmE",], title="This Is the Final Test", body="Hello World! This is a test notification from Shahin App.")
         # from payment.tasks import expire_subscription
         # expire_subscription.apply_async(args=[request.user.id], countdown=10)
         return Response({'msg':'success'}, status=status.HTTP_200_OK)
     
-    
+
+class DeleteUserAPIView(APIView):
+    permission_classes = [IsAuthenticated]  # Only logged-in users
+
+    def delete(self, request, user_id=None):
+        """
+        Delete a user by ID.
+        - If user_id is None, deletes the logged-in user
+        - Admins can delete any user by providing user_id
+        """
+        if user_id:
+            # Only admin can delete other users
+            if not request.user.is_staff:
+                return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+            user = get_object_or_404(User, id=user_id)
+        else:
+            # Delete logged-in user
+            user = request.user
+
+        user.delete()
+        return Response({"detail": "User deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
