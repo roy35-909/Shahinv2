@@ -9,7 +9,8 @@ from .views import (
     GetLikedUserQuote,
     UserScheduleAPIView,
     QuoteListAPIView,
-    ViewedUserQuote
+    ViewedUserQuote,
+    DeleteUserQuote,
 )
 urlpatterns = [
 
@@ -22,5 +23,6 @@ urlpatterns = [
     path('quote/share/<int:pk>/', ShareUserQuote.as_view(), name='share-quote'),
     path('quote/saved/', GetSavedUserQuote.as_view(), name='saved-quotes'),
     path('quote/liked/', GetLikedUserQuote.as_view(), name='liked-quotes'),
+    path('quote/history/delete/<int:pk>/',DeleteUserQuote.as_view(), name='delete-quote'),
     
 ]

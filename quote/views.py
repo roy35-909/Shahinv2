@@ -109,7 +109,20 @@ class LikedUserQuote(APIView):
         
         return Response({"success":"User Liked Saved"},status.HTTP_200_OK)
     
+class DeleteUserQuote(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self,request,pk):
+        user = request.user
 
+        try:
+            user_quote = UserQuote.objects.get(id=pk, user=user)
+        except(ObjectDoesNotExist):
+            return s_404("UserQuote")
+        
+        user_quote.delete()
+
+        return Response({"success":"User Quote Deleted"},status.HTTP_200_OK)
     
 class SavedUserQuote(APIView):
     permission_classes = [IsAuthenticated]
