@@ -407,9 +407,8 @@ class GoogleLoginAPIView(APIView):
             provider_name = decoded.get("firebase", {}).get("sign_in_provider")
 
         # Create or get user
-        user, _ = User.objects.get_or_create(email=email)
+        user, _ = User.objects.get_or_create(email=email, username=email)
         token = RefreshToken.for_user(user)
-        print(provider_name)
         return Response({
             "access": str(token.access_token),
             "refresh": str(token),
