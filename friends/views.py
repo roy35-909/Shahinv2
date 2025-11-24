@@ -330,14 +330,19 @@ class FriendLeaderboardAPIView(APIView):
             for index, u in enumerate(all_users, start=1):
                 user_badge = UserBadge.objects.filter(user=u, is_completed=True).order_by('-id').first()
                 total_points = user_data_map.get(u.id, {}).get("total_points", 0)
-
+                total_points = u.points
+                level_points = 1
+                if total_points < 20:
+                    level_points = 1
+                else:
+                    level_points = total_points / 20
                 results.append({
                     "user_id": u.id,
                     "first_name": u.first_name,
                     "profile_photo": request.build_absolute_uri(u.profile_photo.url) if getattr(u, 'profile_photo', None) else None,
                     "subscription_type": getattr(u, 'subscription_type', 'free'),
-                    "total_points": total_points,
-                    "level":total_points/20,
+                    "total_points": u.points,
+                    "level": level_points,
                     "rank": index,
                     "badge": {
                         "badge_id": user_badge.badge.id if user_badge else None,
