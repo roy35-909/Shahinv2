@@ -407,7 +407,11 @@ class GoogleLoginAPIView(APIView):
             provider_name = decoded.get("firebase", {}).get("sign_in_provider")
 
         # Create or get user
-        user, _ = User.objects.get_or_create(email=email, username=email)
+        user, created = User.objects.get_or_create(email=email, username=email)
+        if created:
+            badges = Badge.objects.all()
+            for badge in badges:
+                UserBadge.objects.get_or_create(user=user, badge=badge)
         token = RefreshToken.for_user(user)
         return Response({
             "access": str(token.access_token),
