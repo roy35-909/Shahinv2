@@ -7,4 +7,5 @@ urlpatterns = [
     path('success/', StripeSuccessAPIView.as_view(), name='success'),
     path('cancel/', StripeCancelAPIView.as_view(), name='cancel'),
     path('plans/', SubscriptionPlansAPIView.as_view(), name='subscription-plans'),
+    path('apple/subscribe/', AppleReceiptVerifyAPIView.as_view(), name='apple-subscribe'),
 ]

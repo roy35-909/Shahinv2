@@ -18,3 +18,20 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionPlan
         fields = ['name', 'price']
+
+class AppleSubscriptionSerializer(serializers.Serializer):
+    receipt = serializers.CharField(required=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    currency = serializers.CharField(default="USD")
+    
+    SUBSCRIPTION_CHOICES = [
+        ("free", "Free"),
+        ("monthly", "Monthly"),
+        ("yearly", "Yearly"),
+        ("lifetime", "Lifetime"),
+    ]
+
+    subscription_type = serializers.ChoiceField(
+        choices=SUBSCRIPTION_CHOICES,
+        default="free"
+    )

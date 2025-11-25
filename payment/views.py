@@ -7,13 +7,34 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from .models import User, SubscriptionPlan,Payment
-from .serializers import SubscriptionSerializer, PaymentSerializer, SubscriptionPlanSerializer
+from .serializers import SubscriptionSerializer, PaymentSerializer, SubscriptionPlanSerializer,AppleSubscriptionSerializer
 from datetime import timedelta
 from django.utils import timezone
 from .tasks import expire_subscription
+import requests
+from shahin.base import NewAPIView
 stripe.api_key = settings.STRIPE_SECRET_KEY
+APPLE_PRODUCTION_URL = "https://buy.itunes.apple.com/verifyReceipt"
+APPLE_SANDBOX_URL = "https://sandbox.itunes.apple.com/verifyReceipt"
 
 
+def verify_apple_receipt(receipt_data):
+    payload = {
+        "receipt-data": receipt_data,
+        "password": settings.APPLE_SHARED_SECRET,  
+        "exclude-old-transactions": True
+    }
+
+    # 1st: Production
+    response = requests.post(APPLE_PRODUCTION_URL, json=payload)
+    result = response.json()
+
+    # If sandbox receipt sent to prod → error 21007
+    if result.get("status") == 21007:
+        response = requests.post(APPLE_SANDBOX_URL, json=payload)
+        result = response.json()
+
+    return result
 
 
 # class SubscribeUserAPIView(APIView):
@@ -262,3 +283,69 @@ class SubscriptionPlansAPIView(APIView):
         plans = SubscriptionPlan.objects.exclude(name__iexact="free")
         serializer = SubscriptionPlanSerializer(plans, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class AppleReceiptVerifyAPIView(NewAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AppleSubscriptionSerializer
+    def post(self, request):
+        receipt = request.data.get("receipt")
+        amount = request.data.get("amount", 0)
+        currency = request.data.get("currency", "USD")
+        subscription_type = request.data.get("subscription_type", "free")
+
+        if not receipt:
+            return Response({"error": "receipt is required"}, status=400)
+
+        # Verify with Apple
+        result = verify_apple_receipt(receipt)
+
+        # Case 1: Receipt INVALID
+        if result.get("status") != 0:
+            return Response({
+                "message": "Receipt invalid",
+                "apple_status": result.get("status"),
+                "apple_response": result
+            }, status=400)
+
+        # Extract Apple transaction details if valid
+        latest_info = result.get("latest_receipt_info", [])
+        purchase = latest_info[-1] if latest_info else {}
+
+        transaction_id = purchase.get("transaction_id")
+        original_transaction_id = purchase.get("original_transaction_id")
+
+        # Case 2: Receipt VALID → Save completed payment
+        Payment.objects.create(
+            user=request.user,
+            amount=amount,
+            currency=currency,
+            status="completed",
+            payment_method="apple",
+            apple_transaction_id=transaction_id,
+            apple_original_transaction_id=original_transaction_id,
+        )
+        user = request.user
+        user.subscription_type = subscription_type
+        user.subscription_start = timezone.now()
+
+        if subscription_type == 'monthly':
+            user.subscription_end = timezone.now() + timedelta(days=30)
+        elif subscription_type == 'yearly':
+            user.subscription_end = timezone.now() + timedelta(days=365)
+        elif subscription_type == 'lifetime':
+            user.subscription_end = None
+
+        user.save()
+        if user.subscription_end:
+            expire_subscription.apply_async(
+                args=[user.id],
+                eta=user.subscription_end
+            )
+        return Response({
+            "message": "Receipt verified successfully",
+            "amount": amount,
+            "currency": currency,
+            "transaction_id": transaction_id,
+            "apple_response": result
+        }, status=200)

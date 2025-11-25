@@ -339,3 +339,7 @@ GOOGLE_CLIENT_IDS = [
     f"{ANDROID_CLIENT_ID}",
     f"{IOS_CLIENT_ID}",
 ]
+
+
+# Apple In App Purchase Configuration
+APPLE_SHARED_SECRET = env('APPLE_SHARED_SECRET')
