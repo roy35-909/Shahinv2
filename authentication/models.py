@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from multiselectfield import MultiSelectField
 from django.utils import timezone
+from shahin.firebase_utils import send_notification_to_tokens
 class CustomUserManager(BaseUserManager):
     def create_user(self,email,password=None,**extra_fields):
         if not email:
@@ -115,6 +116,11 @@ class Friendship(models.Model):
             return "Friend request already sent."
         self.status = self.PENDING
         self.save()
+        send_notification_to_tokens(
+            tokens=[device.token for device in self.user2.device_set.all()],
+            title="New Friend Request",
+            body=f"{self.user1.email} has sent you a friend request."
+        )
 
     def accept_request(self):
         """Accept a friend request and create a mutual friendship."""
@@ -125,6 +131,12 @@ class Friendship(models.Model):
         # Create mutual friendship (add both users to each other's friends)
         self.user1.friends.add(self.user2)
         self.user2.friends.add(self.user1)
+        send_notification_to_tokens(
+            tokens=[device.token for device in self.user1.device_set.all()],
+            title="Friend Request Accepted",
+            body=f"{self.user2.email} has accepted your friend request."
+        )
+        
 
     def reject_request(self):
         """Reject a friend request."""
