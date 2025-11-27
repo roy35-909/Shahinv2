@@ -184,9 +184,13 @@ class PrintQuote(APIView):
         send_notification_to_tokens(tokens=["cgqDfMdCyE3ggR6IdHZmDc:APA91bFo2bS5TAIX31UlByOogGhDhwd1GIOh6JNUORo8KIZQSoS65_Qd6mTSqpo6uZMWOrSVmREB88tODfB_-gmehsMzhgaZo2SY6L9aKKPkvSCzW7pn1f4",], title="This Is the Final Test", body="Hello World! This is a test notification from Shahin App.")
         # from payment.tasks import expire_subscription
         # expire_subscription.apply_async(args=[request.user.id], countdown=10)
+
         return Response({'msg':'success'}, status=status.HTTP_200_OK)
     
-
+    def post(self, request):
+        data = request.data
+        print(data)
+        return Response(data, status=status.HTTP_200_OK)
 class DeleteUserAPIView(APIView):
     permission_classes = [IsAuthenticated]  # Only logged-in users
 

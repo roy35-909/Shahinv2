@@ -259,7 +259,7 @@ class LeaderboardAPIView(NewAPIView):
                         if user_obj.profile_photo else None
                     ),
                     "subscription_type": getattr(user_obj, "subscription_type", "free"),
-                    "total_points": total_points,
+                    "total_points": user_obj.points,
                     "level": total_points / 20,
                     "rank": index,
                     "badge": {

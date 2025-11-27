@@ -349,3 +349,30 @@ class AppleReceiptVerifyAPIView(NewAPIView):
             "transaction_id": transaction_id,
             "apple_response": result
         }, status=200)
+    
+
+# class ApplePaymentWebHook(APIView):
+#     permission_classes = []
+
+
+#     def post(self, request):
+#         data = request.data 
+#         if "product_id" not in data:
+#             return Response({"error":"product_id is required"}, status=400)
+
+#         if "environment" not in data:
+#             return Response({"error":"environment is required"}, status=400)
+        
+#         if "price" not in data:
+#             return Response({"error":"price is required"}, status=400)
+        
+#         if "currency" not in data:
+#             return Response({"error":"currency is required"}, status=400)
+#         subscription_type = data['product_id']
+#         subscription_type = subscription_type.split(".")[-1]
+#         amount = data['price']
+#         currency = data['currency']
+#         Payment.objects.create(
+
+#         )
+        
