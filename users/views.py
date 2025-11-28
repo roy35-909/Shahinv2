@@ -19,8 +19,13 @@ class UserBadgeListAPIView(NewAPIView):
         user = request.user
 
         user_badges = UserBadge.objects.filter(user=user)
+        for badge in user_badges:
+            if user.points >= badge.badge.points_required and not badge.is_completed:
+                badge.is_completed = True
+                badge.save()
         serializer = UserBadgeSerializer(user_badges, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
     
 
 class UnloackABadge(APIView):
