@@ -9,8 +9,9 @@ from rest_framework.views import APIView
 from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
-from quote.models import UserQuote
+from quote.models import UserPointHistory, UserQuote
 from authentication.models import UserBadge
+from django.db.models import Sum
 User = get_user_model()
 
 class SendFriendRequestAPIView(NewAPIView):
@@ -207,11 +208,6 @@ class SearchUserAPIView(NewAPIView):
 
 
 class LeaderboardAPIView(NewAPIView):
-    """
-    Leaderboard API with badges.
-    Shows weekly, monthly, and all-time top users
-    based on their total activity from UserQuote.
-    """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = LeaderboardUserSerializer
 
@@ -221,19 +217,17 @@ class LeaderboardAPIView(NewAPIView):
         month_start = now - timedelta(days=30)
 
         def build_leaderboard(time_filter=None):
-            queryset = UserQuote.objects.select_related("user")
+            queryset = UserPointHistory.objects.select_related("user")
 
             if time_filter:
-                queryset = queryset.filter(sent_at__gte=time_filter)
+                queryset = queryset.filter(changed_at__gte=time_filter)
 
             leaderboard = (
-                queryset
-                .values("user")
-                .annotate(total_points=Count("id"))
+                queryset.values("user")
+                .annotate(total_points=Sum("points_changed"))
                 .order_by("-total_points")[:10]
             )
 
-            # Get all user objects for the leaderboard
             user_ids = [item["user"] for item in leaderboard]
             users = User.objects.filter(id__in=user_ids)
             user_map = {u.id: u for u in users}
@@ -244,7 +238,8 @@ class LeaderboardAPIView(NewAPIView):
                 if not user_obj:
                     continue
 
-                total_points = item["total_points"]
+                total_points = item["total_points"] or 0
+
                 user_badge = (
                     UserBadge.objects.filter(user=user_obj, is_completed=True)
                     .order_by("-id")
@@ -254,13 +249,10 @@ class LeaderboardAPIView(NewAPIView):
                 results.append({
                     "user_id": user_obj.id,
                     "first_name": user_obj.first_name,
-                    "profile_photo": (
-                        request.build_absolute_uri(user_obj.profile_photo.url)
-                        if user_obj.profile_photo else None
-                    ),
+                    "profile_photo": request.build_absolute_uri(user_obj.profile_photo.url)
+                    if user_obj.profile_photo else None,
                     "subscription_type": getattr(user_obj, "subscription_type", "free"),
-                    "total_points": user_obj.points,
-                    "level": total_points / 20,
+                    "total_points": total_points,
                     "rank": index,
                     "badge": {
                         "badge_id": user_badge.badge.id if user_badge else None,
@@ -281,89 +273,71 @@ class LeaderboardAPIView(NewAPIView):
             "monthly": build_leaderboard(month_start),
             "all_time": build_leaderboard(),
         }
-
         return Response(data)
 
-
 class FriendLeaderboardAPIView(APIView):
-    """
-    Leaderboard among the authenticated user's friends (including self).
-    Always shows the current user's activity even if others have none.
-    """
-
     def get(self, request):
         user = request.user
         now = timezone.now()
         week_start = now - timedelta(days=7)
         month_start = now - timedelta(days=30)
 
-        # --- Step 1: Find accepted friends ---
-        friend_ids = Friendship.objects.filter(
+        friendships = Friendship.objects.filter(
             Q(user1=user, status=Friendship.ACCEPTED)
             | Q(user2=user, status=Friendship.ACCEPTED)
         ).values_list("user1", "user2")
 
-        friend_ids = {uid for pair in friend_ids for uid in pair if uid != user.id}
-        friend_ids.add(user.id)  # Always include self
+        friend_ids = {uid for pair in friendships for uid in pair if uid != user.id}
+        friend_ids.add(user.id)
 
-        # --- Step 2: Helper to build leaderboard ---
         def build_leaderboard(time_filter=None):
-            queryset = UserQuote.objects.filter(user_id__in=friend_ids)
+            queryset = UserPointHistory.objects.filter(user_id__in=friend_ids)
             if time_filter:
-                queryset = queryset.filter(sent_at__gte=time_filter)
+                queryset = queryset.filter(changed_at__gte=time_filter)
 
-            leaderboard = (
-                queryset.values(
-                    "user__id",
-                    "user__first_name",
-                    "user__profile_photo",
-                    "user__subscription_type",
-                )
-                .annotate(total_points=Count("id"))
+            points_data = (
+                queryset.values("user")
+                .annotate(total_points=Sum("points_changed"))
             )
+            user_data_map = {i["user"]: i["total_points"] for i in points_data}
 
-            # --- Step 3: Ensure all friends (and self) are present, even with 0 points ---
-            user_data_map = {u["user__id"]: u for u in leaderboard}
             all_users = User.objects.filter(id__in=friend_ids)
 
             results = []
-            for index, u in enumerate(all_users, start=1):
+            for u in all_users:
+                total_points = user_data_map.get(u.id, 0)
+                level = total_points // 20
+
                 user_badge = UserBadge.objects.filter(user=u, is_completed=True).order_by('-id').first()
-                total_points = user_data_map.get(u.id, {}).get("total_points", 0)
-                total_points = u.points
-                level_points = 1
-                if total_points < 20:
-                    level_points = 1
-                else:
-                    level_points = total_points / 20
+
                 results.append({
                     "user_id": u.id,
                     "first_name": u.first_name,
-                    "profile_photo": request.build_absolute_uri(u.profile_photo.url) if getattr(u, 'profile_photo', None) else None,
+                    "profile_photo": request.build_absolute_uri(u.profile_photo.url)
+                    if getattr(u, 'profile_photo', None) else None,
                     "subscription_type": getattr(u, 'subscription_type', 'free'),
-                    "total_points": u.points,
-                    "level": level_points,
-                    "rank": index,
+                    "total_points": total_points,
                     "badge": {
                         "badge_id": user_badge.badge.id if user_badge else None,
                         "badge_name": user_badge.badge.name if user_badge else None,
                         "is_completed": user_badge.is_completed if user_badge else False,
                         "image": (
-                        request.build_absolute_uri(user_badge.badge.image.url)
-                        if (user_badge and user_badge.badge and user_badge.badge.image)
-                        else None
-                    )
+                            request.build_absolute_uri(user_badge.badge.image.url)
+                            if (user_badge and user_badge.badge and user_badge.badge.image)
+                            else None
+                        )
                     }
                 })
 
-            # Sort by total points descending
             results = sorted(results, key=lambda x: x["total_points"], reverse=True)
+
+            for index, item in enumerate(results, start=1):
+                item["rank"] = index
+
             return results
 
-        data = {
+        return Response({
             "weekly": build_leaderboard(week_start),
             "monthly": build_leaderboard(month_start),
             "all_time": build_leaderboard(),
-        }
-
-        return Response(data)
+        })

@@ -1,8 +1,9 @@
 
+from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from shahin.base import NewAPIView
-from .models import UserSchedule
+from .models import UserPointHistory, UserSchedule
 from .utils import schedule_user_notifications
 from .serializers import *
 from rest_framework.permissions import AllowAny,IsAuthenticated
@@ -20,21 +21,25 @@ class QuotePagination(PageNumberPagination):
 class QuoteListAPIView(APIView):
     def get(self, request, *args, **kwargs):
         user = request.user  
-
-
         user_targets = user.target
         if not user_targets:
             return Response({"error": "User has no target categories defined."}, status=status.HTTP_400_BAD_REQUEST)
-
-
         quotes = Quote.objects.filter(category__in=user_targets)
-
         user_quote_ids = UserQuote.objects.filter(user=user,is_viewed=True).values_list('quote_id', flat=True)
-        quotes = quotes.exclude(id__in=user_quote_ids)
-
+        user_quote_ids_today = UserQuote.objects.filter(
+        user=user,
+        sent_at__date=timezone.now().date()
+    ).values_list('quote_id', flat=True)
+        print(f"Today's viewed quotes: {len(user_quote_ids_today)}")
+        if user.subscription_type == 'free':
+            if len(user_quote_ids_today) >= 5:
+                quotes = []
+            else:
+                quotes = quotes.exclude(id__in=user_quote_ids)[:5]
+        else:
+            quotes = quotes.exclude(id__in=user_quote_ids)
         paginator = QuotePagination()
         paginated_quotes = paginator.paginate_queryset(quotes, request)
-        
         user_quote_list = []
         for quote in paginated_quotes:
             user_quote, created = UserQuote.objects.get_or_create(user=user, quote=quote)
@@ -57,14 +62,14 @@ class UserScheduleAPIView(NewAPIView):
             end_time = serializer.validated_data['end_time']
             interval_minutes = serializer.validated_data['interval_minutes']
 
-            # Update or create the user schedule
+
             schedule, created = UserSchedule.objects.get_or_create(user=user)
             schedule.start_time = start_time
             schedule.end_time = end_time
             schedule.interval_minutes = interval_minutes
             schedule.save()
 
-            # Schedule notifications for the user
+
             schedule_user_notifications(user)
 
             return Response({"message": "Schedule updated successfully"})
@@ -87,32 +92,50 @@ class ListUserQuoteHistory(NewAPIView):
 class LikedUserQuote(APIView):
     permission_classes = [IsAuthenticated]
     
-    def get(self,request,pk):
+    def get(self, request, pk):
         user = request.user
 
         try:
             user_quote = UserQuote.objects.get(id=pk, user=user)
-        except(ObjectDoesNotExist):
+        except ObjectDoesNotExist:
             return s_404("UserQuote")
-        
+
         if user_quote.is_liked:
+            # Unlike Action ➝ Decrease points
             user_quote.is_liked = False
             user_quote.save()
-            user.points-=1
-            user.save()
-        else:
-            user.points+=1
-            user.save()
-            user_quote.is_liked = True
 
-        user_quote.save()
-        
-        return Response({"success":"User Liked Saved"},status.HTTP_200_OK)
+            user.points -= 1
+            user.save()
+
+            UserPointHistory.objects.create(
+                user=user,
+                points_changed=-1,
+                reason="Unliked a quote"
+            )
+
+        else:
+            # Like Action ➝ Increase points
+            user_quote.is_liked = True
+            user_quote.save()
+
+            user.points += 1
+            user.save()
+
+            UserPointHistory.objects.create(
+                user=user,
+                points_changed=+1,
+                reason="Liked a quote"
+            )
+
+        return Response({"success": "User Liked Saved"}, status=status.HTTP_200_OK)
+    
+
     
 class DeleteUserQuote(APIView):
     permission_classes = [IsAuthenticated]
-    
-    def delete(self,request,pk):
+
+    def delete(self, request, pk):
         user = request.user
 
         try:
@@ -127,50 +150,95 @@ class DeleteUserQuote(APIView):
 class SavedUserQuote(APIView):
     permission_classes = [IsAuthenticated]
     
-    def get(self,request,pk):
+    def get(self, request, pk):
         user = request.user
 
         try:
             user_quote = UserQuote.objects.get(id=pk, user=user)
-        except(ObjectDoesNotExist):
+        except ObjectDoesNotExist:
             return s_404("UserQuote")
-        
-        user_quote.is_saved = True
-        user_quote.save()
 
-        return Response({"success":"User Quote Saved"},status.HTTP_200_OK)
+        if user_quote.is_saved:
+            # Undo save ➝ -1 point
+            user_quote.is_saved = False
+            user_quote.save()
+            user.points -= 1
+            user.save()
+
+            UserPointHistory.objects.create(
+                user=user,
+                points_changed=-1,
+                reason="Removed saved quote"
+            )
+        else:
+            # Save ➝ +1 point
+            user_quote.is_saved = True
+            user_quote.save()
+            user.points += 1
+            user.save()
+
+            UserPointHistory.objects.create(
+                user=user,
+                points_changed=+1,
+                reason="Saved a quote"
+            )
+
+        return Response({"success": "User Quote Saved"}, status=status.HTTP_200_OK)
     
+
 class ViewedUserQuote(APIView):
     permission_classes = [IsAuthenticated]
     
-    def get(self,request,pk):
+    def get(self, request, pk):
         user = request.user
 
         try:
             user_quote = UserQuote.objects.get(id=pk, user=user)
-        except(ObjectDoesNotExist):
+        except ObjectDoesNotExist:
             return s_404("UserQuote")
         
-        user_quote.is_viewed = True
-        user_quote.save()
+        if not user_quote.is_viewed:
+            user_quote.is_viewed = True
+            user_quote.save()
 
-        return Response({"success":"User Viewed The Quote"},status.HTTP_200_OK)
+            user.points += 1
+            user.save()
+
+            UserPointHistory.objects.create(
+                user=user,
+                points_changed=+1,
+                reason="Viewed a quote"
+            )
+
+        return Response({"success": "User Viewed The Quote"}, status=status.HTTP_200_OK)
     
 class ShareUserQuote(APIView):
     permission_classes = [IsAuthenticated]
     
-    def get(self,request,pk):
+    def get(self, request, pk):
         user = request.user
 
         try:
             user_quote = UserQuote.objects.get(id=pk, user=user)
-        except(ObjectDoesNotExist):
+        except ObjectDoesNotExist:
             return s_404("UserQuote")
         
-        user_quote.is_share = True
-        user_quote.save()
+        if not user_quote.is_share:
+            user_quote.is_share = True
+            user_quote.save()
 
-        return Response({"success":"User Quote Shared"},status.HTTP_200_OK)
+            user.points += 25
+            user.save()
+
+            UserPointHistory.objects.create(
+                user=user,
+                points_changed=+25,
+                reason="Shared a quote"
+            )
+
+        return Response({"success": "User Quote Shared"}, status=status.HTTP_200_OK)
+    
+
 
 class GetSavedUserQuote(NewAPIView):
     permission_classes = [IsAuthenticated]

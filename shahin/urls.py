@@ -19,5 +19,6 @@ urlpatterns = [
     path('friends/', include('friends.urls')),
     path('payment/', include('payment.urls')),
     path('dashboard/', include('dashboard.urls')),
+    path('ai/', include('ai.urls')),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

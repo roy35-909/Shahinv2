@@ -14,27 +14,40 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def generate_quote(topic):
+    number = 200
     quote_generator = QuoteGenerator()
-    number = 20
-    for quote in quote_generator.generate_quote(topic, number):
-        quote = re.sub(r'^```[\w]*|```$', '', quote).strip()
-        print(quote)
-        print("DEBUG: quote =", repr(quote)) 
-        try:
-            dict_data = json.loads(quote)
-        except:
+
+    for raw_item in quote_generator.generate_quote(topic, number):
+
+
+        if not isinstance(raw_item, str):
             continue
-        first_key = list(dict_data.keys())[0]
-        first_value = dict_data[first_key]
+
+
+        cleaned = re.sub(r"^```[\w]*\n?|\n?```$", "", raw_item).strip()
+
+
         try:
-            secnd_key = list(dict_data.keys())[1]
-            secnd_value = dict_data[secnd_key]
-        except:
-            secnd_value = 'Unknown'
-        Quote.objects.create(category=topic.lower(),content=first_value, author=secnd_value)
-
-        print(first_key) 
-        print(first_value)
+            item = json.loads(cleaned)
+        except Exception:
+            print("❌ JSON load failed:", cleaned)
+            continue
 
 
+        content = item.get(topic)
+        author = item.get("author", "ai-generated")
+
+
+        if not content:
+            print("⚠️ Content missing:", item)
+            continue
+
+
+        Quote.objects.create(
+            category=topic.lower(),
+            content=content.strip(),
+            author=author.strip()
+        )
+
+        print("✔️ Saved:", content[:30], "...")
 

@@ -63,3 +63,8 @@ class UserSchedule(models.Model):
     
 
     
+class UserPointHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    points_changed = models.IntegerField()
+    reason = models.CharField(max_length=255)
+    changed_at = models.DateTimeField(auto_now_add=True)

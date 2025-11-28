@@ -1,5 +1,5 @@
 from celery import shared_task
-from .models import User, UserQuote, Quote
+from .models import User, UserPointHistory, UserQuote, Quote
 from random import choice
 # from .push_notification import send_push_notification  # Assume this function sends notifications
 
@@ -71,6 +71,12 @@ def send_motivation_quote(user_id):
         print(f"Sending Push Notification to: {user} , {quote}, tokens are {tokens}")
         send_notification_to_tokens(tokens=tokens, title=quote.author, body=quote.content)
         UserQuote.objects.get_or_create(user=user, quote=quote)
+        user.points += 2
+        user.save()
+        UserPointHistory.objects.create(user=user, points_changed=2, reason="Received motivational quote")
+    else:
+        print(f"No relevant quote found for user {user.email}")
+
 
 def get_relevant_quote(user):
     """
