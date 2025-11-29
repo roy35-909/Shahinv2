@@ -416,4 +416,5 @@ class GoogleLoginAPIView(APIView):
         return Response({
             "access": str(token.access_token),
             "refresh": str(token),
-        })
+            "user_id": user.id,
+        }) 
