@@ -282,6 +282,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     if user:
                         # Log the successful login
                         LoginHistory.objects.create(user=user)
+                        response.data['user_id'] = user_id
                 except Exception as e:
                     print(f"Error retrieving user from token: {e}")
         
