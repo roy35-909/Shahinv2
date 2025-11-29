@@ -373,3 +373,5 @@ class ApplePaymentWebHook(APIView):
         amount = data['price']
         currency = data['currency']
         print(request.data)
+    
+        return Response({"message":"Webhook received"}, status=200)
